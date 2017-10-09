@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>None</title>
+  </head>
+  <body>
+    <svg class="canv-parent" width="1000" height="400" style="border:solid black;" viewbox="-100 -100 1000 1000">
+      <g class="canv"></g>
+    </svg>
+    <script src="https://d3js.org/d3.v4.js" charset="utf-8"></script>
+    <script src="d3-pedigree-tree.js" charset="utf-8"></script>
+    <script type="text/javascript">
+      function main() {  
+        var nodes = generate_nodes(4,10,2,5);
+        var tree = pedigreeTree()
+          .levelWidth(400)
+          // .nodeWidth(100)
+          .nodePadding(40)
+          .zoomable(true)
+          // .sort(100)
+          //.groupChildless(true)
+          .updateDuration(800)
+          .hideOnHover(true)
+          .data(nodes);
+        tree.sort(0).autofit(".canv-parent")(".canv");
+        setTimeout(function(){
+          tree.sort(100).autofit(".canv-parent")(".canv",true);
+        },800);
+      }
+      function generate_nodes(num_init,num_breedings,min_children,max_children){
+        var nodes = [];
+        var id = 0;
+        for (var i = 0; i < num_init; i++) {
+          nodes.push({'mother':null,'father':null,'children':[],'id':id++,'level':0});
+        }
+        for (var i = 0; i < num_breedings; i++) {
+          mother = nodes[Math.floor(Math.random()*nodes.length)];
+          father = mother;
+          while (father==mother || (father.level!==mother.level)){
+            father = nodes[Math.floor(Math.random()*nodes.length)];
+          }
+          if (Math.random()>0.5){
+            father = nodes[Math.floor(Math.random()*nodes.length)];
+            while (father==mother){
+              father = nodes[Math.floor(Math.random()*nodes.length)];
+            }
+          }
+          num_offspring = min_children+Math.floor(Math.random()*(max_children+1-min_children));
+          for (var j = 0; j < num_offspring; j++) {
+            new_child = {'mother':mother,'father':father,'children':[],'id':id++,'level':d3.max([mother.level,father.level])+1};
+            mother.children.push(new_child);
+            father.children.push(new_child);
+            nodes.push(new_child);
+          }
+        }
+        return nodes; 
+      }
+      main();
+    </script>
+  </body>
+</html>
