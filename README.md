@@ -56,7 +56,7 @@ svgSelector = '.tree-svg';
 
 layout_data = pdgtree(svgSelector);
 //OR
-d3.select(layout_data).call(svgSelector);
+d3.select(layout_data).call(pdgtree);
 
 ```
 
