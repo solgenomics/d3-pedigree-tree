@@ -53,7 +53,11 @@ layout_data = pdgtree.treeLayout();
 To draw the tree:
 ```javascript
 svgSelector = '.tree-svg';
+
 layout_data = pdgtree(svgSelector);
+//OR
+d3.select(layout_data).call(svgSelector);
+
 ```
 
 
