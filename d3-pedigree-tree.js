@@ -317,11 +317,10 @@ function pedigreeTree(){
   pdgtree.treeLayout = function(){
     //create working nodes from input data (we dont want to modify the input) 
     var node_list = wrap_nodes(data);
-    console.log(node_list);
-    return null;
-    console.log(node_list);
     node_list.forEach(function(d){setNodeLevels(d);});
     setBestRootNodeLevels(node_list);
+    console.log(node_list);
+    return null;
     
     var levels = getLevels(node_list);
     if (sort) sortTree(levels,sort);
@@ -476,14 +475,15 @@ function pedigreeTree(){
         }
         return grouped;
       },{});
-      d3.values(grouped).forEach(function(wrapped){
+      var grouped_nodes = d3.values(grouped);
+      grouped_nodes.forEach(function(wrapped){
         if (wrapped.type=='node') {
           wrapped.children = wrapped.children.filter(function(c){
             return !!grouped[c.id];
           });
         }
       });
-      return grouped;
+      return grouped_nodes;
     } 
     else {
       return wrapped_nodes;
@@ -508,7 +508,7 @@ function pedigreeTree(){
   
   function setBestRootNodeLevels(nodes){
     nodes.filter(function(node){
-      return node.mother===null && node.father===null;
+      return node.parents.length==0;
     }).forEach(function(node){
       node.level = d3.min(node.children,function(child){
         return child.level-1;
