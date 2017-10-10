@@ -15,11 +15,12 @@
         var nodes = generate_nodes(4,10,2,5);
         var tree = pedigreeTree()
           .levelWidth(400)
-          // .nodeWidth(100)
           .nodePadding(40)
           .zoomable(true)
-          // .sort(100)
-          //.groupChildless(true)
+          .parents(function(d){
+            return [d.mother,d.father].filter(Boolean);
+          })
+          .groupChildless(true)
           .updateDuration(800)
           .hideOnHover(true)
           .data(nodes);

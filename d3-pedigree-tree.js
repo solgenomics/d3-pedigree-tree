@@ -1,10 +1,9 @@
 function pedigreeTree(){
   var self = this,
-      mother = function(d){return d.mother;},
-      father = function(d){return d.father;},
-      children = function(d){return d.children;},
+      parents = function(d){return d.parents;},
       id = function(d){return d.id;},
       value = function(d){return d.value;},
+      parentsOrdered = true,
       levelWidth = 10,
       nodePadding = 10,
       nodeWidth = 5,
@@ -254,16 +253,12 @@ function pedigreeTree(){
     updateDuration = dur;
     return pdgtree;
   }
-  pdgtree.mother = function(func){
-    mother=func;
+  pdgtree.parents = function(func){
+    parents=func;
     return pdgtree;
   };
-  pdgtree.father = function(func){
-    father=func;
-    return pdgtree;
-  };
-  pdgtree.children = function(func){
-    children=func;
+  pdgtree.parentsOrdered = function(bool){
+    parentsOrdered = bool;
     return pdgtree;
   };
   pdgtree.id = function(func){
@@ -322,6 +317,8 @@ function pedigreeTree(){
   pdgtree.treeLayout = function(){
     //create working nodes from input data (we dont want to modify the input) 
     var node_list = wrap_nodes(data);
+    console.log(node_list);
+    return null;
     console.log(node_list);
     node_list.forEach(function(d){setNodeLevels(d);});
     setBestRootNodeLevels(node_list);
@@ -423,57 +420,74 @@ function pedigreeTree(){
   }
   
   function wrap_nodes(data){
-    var nodes = {};
-    var to_group = [];
-    var keep_nodes = [];
-    data.forEach(function(node_data){
-      var d_id = id(node_data);
-      if (!groupChildless || !!excludeFromGrouping[id(node_data)] || children(node_data).length>0){
-        nodes[d_id] = {'value':value(node_data),'id':d_id,'children':[],'type':'node','links':[]};
-        keep_nodes.push(nodes[d_id]);
-      }
-      else {
-        to_group.push(node_data);
-      }
-    });
-    d3.nest()
-      .key(function(node_data){return mother(node_data)?id(mother(node_data)):null})
-      .key(function(node_data){return father(node_data)?id(father(node_data)):null})
-      .entries(to_group).forEach(function(mother_group){
-        mother_group.values.forEach(function(father_group){
-          if (father_group.values.length>=minGroupSize) {
-            var g_id = ""+mother_group.key+"+"+father_group.key+"_group";
-            nodes[g_id] = {'group':father_group.values,'id':g_id,'children':[],'type':'node','links':[]}
-            keep_nodes.push(nodes[g_id]);
-            father_group.values.forEach(function(node_data){
-              nodes[id(node_data)] = nodes[g_id];
-            })
-          }
-          else {
-            var d_id = id(father_group.values[0]);
-            nodes[d_id] = {'value':value(father_group.values[0]),'id':d_id,'children':[],'type':'node','links':[]};
-            keep_nodes.push(nodes[d_id]);
-          }
-        })
+    var idmap = {};
+    var wrapped_nodes = data.map(function(node_data){
+        var node_id = id(node_data);
+        idmap[node_id] = {
+          'type':'node', 
+          'id':id(node_data), 
+          'value':value(node_data), 
+          'children':[], 
+          'links':[],
+          '_node_data':node_data
+        };
+        return idmap[node_id];
       });
-    data.forEach(function(node_data){
-      var d_id = id(node_data);
-      nodes[d_id].mother = (_p = mother(node_data)) != null ? nodes[id(_p)] : null;
-      nodes[d_id].father = (_p = father(node_data)) != null ? nodes[id(_p)] : null;
-      children(node_data)
-        .map(function(child){return nodes[id(child)]})
-        .sort(function(a,b){return d3.ascending(a.id,b.id)})
-        .reduce(function(arr,wrapped){
-          if (arr.length<1 || wrapped.id!=arr[arr.length-1].id){
-            arr.push(wrapped);
-          }
-          return arr;
-        },[])
-        .forEach(function(wrapped){
-          nodes[d_id].children.push(wrapped);
+    wrapped_nodes.forEach(function(wrapped){
+        var parent_ids = parents(wrapped._node_data).map(id);
+        if (!parentsOrdered) parent_ids.sort();
+        wrapped.parents = parent_ids.map(function(p_id){return idmap[p_id];});
+        wrapped.parents.forEach(function(parent){
+          parent.children.push(wrapped);
         });
-    });
-    return keep_nodes;
+      });
+    if (groupChildless){
+      var sibling_groups = d3.nest().key(function(wrapped){
+          var p_ids = wrapped.parents.map(function(p){return p.id;});
+          return p_ids? "NG::"+p_ids.join("++M++") : "NG::_ROOT_";
+        })
+        .entries(wrapped_nodes);
+      var grouped = sibling_groups.reduce(function(grouped, sibling_group){
+        var groupable = sibling_group.values.filter(function(wrapped){
+          return wrapped.children.length==0 && !excludeFromGrouping[wrapped.id];
+        });
+        if (groupable.length>=minGroupSize) {
+          grouped[sibling_group.key] = {
+            'type':'node-group', 
+            'id':sibling_group.key, 
+            'value':groupable, 
+            'children':[],
+            'links':[]
+          };
+          grouped[sibling_group.key].parents = groupable[0].parents.map(function(p){
+            p.children.push(grouped[sibling_group.key]);
+            return p;
+          })
+          sibling_group.values.forEach(function(wrapped){
+            if (wrapped.children.length>0 || excludeFromGrouping[wrapped.id]){
+              grouped[wrapped.id] = wrapped;
+            }
+          });
+        }
+        else {
+          sibling_group.values.forEach(function(wrapped){
+            grouped[wrapped.id] = wrapped;
+          });
+        }
+        return grouped;
+      },{});
+      d3.values(grouped).forEach(function(wrapped){
+        if (wrapped.type=='node') {
+          wrapped.children = wrapped.children.filter(function(c){
+            return !!grouped[c.id];
+          });
+        }
+      });
+      return grouped;
+    } 
+    else {
+      return wrapped_nodes;
+    }
   }
   
   function setNodeLevels(node,set_level){
