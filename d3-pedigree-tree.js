@@ -319,9 +319,7 @@ function pedigreeTree(){
     var node_list = wrap_nodes(data);
     node_list.forEach(function(d){setNodeLevels(d);});
     setBestRootNodeLevels(node_list);
-    console.log(node_list);
-    return null;
-    
+    //stuff for intergenerational links    
     var levels = getLevels(node_list);
     if (sort) sortTree(levels,sort);
     
@@ -435,6 +433,7 @@ function pedigreeTree(){
     wrapped_nodes.forEach(function(wrapped){
         var parent_ids = parents(wrapped._node_data).map(id);
         if (!parentsOrdered) parent_ids.sort();
+        wrapped.sib_group_id = parent_ids ? "NG::"+parent_ids.join("++M++") : "NG::_ROOT_";
         wrapped.parents = parent_ids.map(function(p_id){return idmap[p_id];});
         wrapped.parents.forEach(function(parent){
           parent.children.push(wrapped);
@@ -442,8 +441,7 @@ function pedigreeTree(){
       });
     if (groupChildless){
       var sibling_groups = d3.nest().key(function(wrapped){
-          var p_ids = wrapped.parents.map(function(p){return p.id;});
-          return p_ids? "NG::"+p_ids.join("++M++") : "NG::_ROOT_";
+          return wrapped.sib_group_id;
         })
         .entries(wrapped_nodes);
       var grouped = sibling_groups.reduce(function(grouped, sibling_group){
@@ -567,8 +565,9 @@ function pedigreeTree(){
       });
       levels.forEach(function(level){
         level.forEach(function(node,i){
-            if(node.mother!==null&&node.father!==null){
-              node.sort_val = (node.sort_val+node.mother.sort_val+node.father.sort_val)/3;
+            if(node.parents){
+              var psv = d3.mean(node.parents,function(p){return p.sort_val});
+              node.sort_val = nsv/3 + 2*psv/3;
             }
         });
         level.sort(function(a,b){
@@ -586,16 +585,15 @@ function pedigreeTree(){
       level.forEach(function(node,i){
         var parentSortVal = 0;
         var currentSortVal = node.sort_val;
-        if (node.mother!==null && node.father!==null){
-          parentSortVal = (node.mother.sort_val+node.father.sort_val)/2;
+        if (node.parents){
+          parentSortVal = d3.mean(node.parents,function(p){return p.sort_val});
         } else {
           parentSortVal = currentSortVal;
         }
         node.sort_list = [
           parentSortVal,
-          node.mother?node.mother.id:-1,
-          node.father?node.father.id:-1,
-          node.hasOwnProperty('group')?100000:currentSortVal
+          node.sib_group_id,
+          node.type=='node-group'?100000:currentSortVal //keeps node-groups as the last node in any sibling_group
         ];
       });
       level.sort(function(a,b){
