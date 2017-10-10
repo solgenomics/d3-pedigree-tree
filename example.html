@@ -23,8 +23,9 @@
           .groupChildless(true)
           .updateDuration(800)
           .hideOnHover(true)
+          .sort(0)
           .data(nodes);
-        tree.sort(0).autofit(".canv-parent")(".canv");
+        tree.autofit(".canv-parent")(".canv");
         setTimeout(function(){
           tree.sort(100).autofit(".canv-parent")(".canv",true);
         },800);

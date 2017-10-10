@@ -2,7 +2,7 @@ function pedigreeTree(){
   var self = this,
       parents = function(d){return d.parents;},
       id = function(d){return d.id;},
-      value = function(d){return d.value;},
+      value = function(d){return d;},
       parentsOrdered = true,
       levelWidth = 10,
       nodePadding = 10,
@@ -20,6 +20,7 @@ function pedigreeTree(){
   
   function pdgtree(selector,isUpdate,zoom){
     var layout = pdgtree.treeLayout(data);
+    console.log(layout);
     var trans = d3.transition().duration(isUpdate?updateDuration:0);
     var node_data = layout.nodes,
         link_data = layout.links,
@@ -85,6 +86,7 @@ function pedigreeTree(){
         var start_pos = [d.x,d.y];
         return 'translate(' + start_pos[0] + ',' + start_pos[1] + ')';
       });
+    newNodes.append('text').attr("x",10).text(function(d){return d.id});
     newNodes.append('circle')
       .attr('r',6)
       .attr('fill',function(d){
@@ -110,49 +112,49 @@ function pedigreeTree(){
         canv.select('.node-g').selectAll('.node')
           .transition(htrans)
           .attr("opacity","1");
-        })
-        .on("mouseover",function(d){
-          highlight_links = [];
-          for (var i = 0; i < d.links.length; i++) {
-            d.links[i].source.links.forEach(function(link){
-              if (d.links[i].linktype=="child" && 
-                  (link.linktype == "mother" || link.linktype == "father")){
-                highlight_links.push(link);
-              }
-            });
-            d.links[i].sink.links.forEach(function(link){
-              if (link.linktype=="child" && 
-                  (d.links[i].linktype == "mother" || 
-                    d.links[i].linktype == "father")){
-                highlight_links.push(link);
-              }
-            });
-            highlight_links.push(d.links[i]);
-          }
-          highlight_nodes = [];
-          highlight_links.forEach(function(l){
-            highlight_nodes.push(l.source,l.sink);
-          });
-          var htrans = d3.transition("htrans").ease(d3.easePolyOut).duration(1000);
-          canv.select('.link-g').selectAll('.link')
-            .transition(htrans).attr("opacity",function(d_2){
-              if (highlight_links.indexOf(d_2)>-1){
-                return 1;
-              } 
-              else {
-                return 0;
-              }
-            })
-          canv.select('.node-g').selectAll('.node')
-            .transition(htrans).attr("opacity",function(d_2){
-              if (highlight_nodes.indexOf(d_2)>-1){
-                return 1;
-              } 
-              else {
-                return 0;
-              }
-            })
         });
+        // .on("mouseover",function(d){
+        //   highlight_links = [];
+        //   for (var i = 0; i < d.links.length; i++) {
+        //     d.links[i].source.links.forEach(function(link){
+        //       if (d.links[i].linktype=="child" && 
+        //           (link.linktype == "mother" || link.linktype == "father")){
+        //         highlight_links.push(link);
+        //       }
+        //     });
+        //     d.links[i].sink.links.forEach(function(link){
+        //       if (link.linktype=="child" && 
+        //           (d.links[i].linktype == "mother" || 
+        //             d.links[i].linktype == "father")){
+        //         highlight_links.push(link);
+        //       }
+        //     });
+        //     highlight_links.push(d.links[i]);
+        //   }
+        //   highlight_nodes = [];
+        //   highlight_links.forEach(function(l){
+        //     highlight_nodes.push(l.source,l.sink);
+        //   });
+        //   var htrans = d3.transition("htrans").ease(d3.easePolyOut).duration(1000);
+        //   canv.select('.link-g').selectAll('.link')
+        //     .transition(htrans).attr("opacity",function(d_2){
+        //       if (highlight_links.indexOf(d_2)>-1){
+        //         return 1;
+        //       } 
+        //       else {
+        //         return 0;
+        //       }
+        //     })
+        //   canv.select('.node-g').selectAll('.node')
+        //     .transition(htrans).attr("opacity",function(d_2){
+        //       if (highlight_nodes.indexOf(d_2)>-1){
+        //         return 1;
+        //       } 
+        //       else {
+        //         return 0;
+        //       }
+        //     })
+        // });
     }
       
     //update links
@@ -168,54 +170,46 @@ function pedigreeTree(){
       .attr('fill','none')
       .attr('stroke-width',2)
       .attr("shape-rendering","geometricPrecision")
-      .attr('stroke',function(d){
-        if (d.linktype=='mother') return 'red';
-        else if (d.linktype=='father') return 'blue';
-        else if (d.linktype=='child') return 'green';
-        return 'gray';
-      })
+      .attr('stroke','red')
       .attr('d',function(d){
-        if (d.linktype=="child"){
-          return d3.line()([
-            [d.sink.x,d.sink.y],
-            [d.sink.x,d.sink.y],
-            [d.sink.x,d.sink.y]
-          ]);
-        }
-        return null;
+        return d3.line()(d.path);
       });
     var allLinks = newLinks.merge(links);
-    //set up link generators (to prevent overlap) and line generators.
-    var inner_link = inner_link_layer(5,0.25,0.75);
-    var outer_link = outer_link_layer(10,layout.y[0]-10,layout.y[1]+10,inner_link);
-    var stepline = d3.line().curve(d3.curveStep);
-    var basisline = d3.line().curve(d3.curveBasis);
+    // //set up link generators (to prevent overlap) and line generators.
+    // var inner_link = inner_link_layer(5,0.25,0.75);
+    // var outer_link = outer_link_layer(10,layout.y[0]-10,layout.y[1]+10,inner_link);
+    // var stepline = d3.line().curve(d3.curveStep);
+    // var basisline = d3.line().curve(d3.curveBasis);
     allLinks.transition(trans).attr("opacity",1).select('path').attr('d',function(d){
-      var link_dist = Math.abs(d.sink.level-d.source.level);
-      if (d.linktype=='child'){
-        return stepline([
-          [d.source.x,d.source.y],
-          [d.sink.x,d.sink.y]
-        ]);
-      }
-      else if (link_dist<=1){
-        return basisline(
-          inner_link(
-            d.source.x+nodeWidth,d.source.y,
-            d.sink.x,d.sink.y,d.sink.level
-          )
-        );
-      } else {
-        var level_width = Math.abs(d.source.x-d.sink.x)/link_dist;
-        return basisline(
-          outer_link(
-            d.source.x+nodeWidth,d.source.y,
-            d.sink.x,d.sink.y,d.source.level,
-            d.sink.level,level_width
-          )
-        );
-      }
+      return d3.line()(d.path);
     });
+    
+    //   function(d){
+    //   var link_dist = Math.abs(d.sink.level-d.source.level);
+    //   if (d.linktype=='child'){
+    //     return stepline([
+    //       [d.source.x,d.source.y],
+    //       [d.sink.x,d.sink.y]
+    //     ]);
+    //   }
+    //   else if (link_dist<=1){
+    //     return basisline(
+    //       inner_link(
+    //         d.source.x+nodeWidth,d.source.y,
+    //         d.sink.x,d.sink.y,d.sink.level
+    //       )
+    //     );
+    //   } else {
+    //     var level_width = Math.abs(d.source.x-d.sink.x)/link_dist;
+    //     return basisline(
+    //       outer_link(
+    //         d.source.x+nodeWidth,d.source.y,
+    //         d.sink.x,d.sink.y,d.source.level,
+    //         d.sink.level,level_width
+    //       )
+    //     );
+    //   }
+    // });
     //add expansion behaviour to groups.
     allNodes.filter(function(d){return d.hasOwnProperty('group')})
       .style("cursor", "pointer")
@@ -319,15 +313,48 @@ function pedigreeTree(){
     var node_list = wrap_nodes(data);
     node_list.forEach(function(d){setNodeLevels(d);});
     setBestRootNodeLevels(node_list);
-    //stuff for intergenerational links    
+    
+    //create intermediate nodes for intergenerational links
+    var intermediates = {};
+    for (var n = node_list.length-1; n > -1; n--) {
+      var node = node_list[n];
+      for (var i = node.children.length-1; i > -1; i--) {
+        var child = node.children[i];
+        if (node.level<child.level-1){
+          node.children.splice(i,1);
+          child.parents.splice(child.parents.indexOf(node),1);
+          var current = node;
+          while (current.level<child.level-1){
+            var next_level = current.level+1;
+            var intermediate_id = "LI::"+next_level+"::"+node.id+"->"+child.sib_group_id;
+            if (!intermediates[intermediate_id]){
+              intermediates[intermediate_id] = {
+                'type':'link-intermediate', 
+                'id':intermediate_id,
+                'sib_group_id':intermediate_id, 
+                'level':next_level,
+                'children':[], 
+                'parents':[current]
+              };
+              current.children.push(intermediates[intermediate_id]);
+              node_list.push(intermediates[intermediate_id]);
+            }
+            current = intermediates[intermediate_id];
+          }
+          current.children.push(child);
+          child.parents.push(current);
+        }
+      }
+    }
+    
     var levels = getLevels(node_list);
     if (sort) sortTree(levels,sort);
     
     var xrange = [0,levelWidth*(levels.length-1)]
     var yrange = [0,nodePadding*(d3.max(levels,function(l){return l.length}))-1]
     
-    var x = d3.scalePoint()
-      .domain(levels.map(function(d,i){return i}))
+    var x = d3.scaleLinear()
+      .domain([0,levels.length-1])
       .range(xrange);
     
     levels.forEach(function(level,i){
@@ -341,55 +368,50 @@ function pedigreeTree(){
       });
     });
     
-    node_list = [].concat.apply([], levels);
-    
-    var matings = d3.nest()
-      .key(function(node) { return node.mother?node.mother.id:"root"; })
-      .key(function(node) { return node.father?node.father.id:"root"; })
-      .entries(node_list)
-      .reduce(function(arr,mating_group){
-        return [].concat.apply(arr,mating_group.values);
-      },[]).map(function(mating){
-        if (mating.values[0].mother===null || mating.values[0].father=== null){
-          return null;
+    //remove intergenerational link intermediates and make link paths
+    node_list = [].concat.apply([], levels).filter(function(node){return node.type!="link-intermediate"});
+    var sibling_points = d3.nest()
+      .key(function(node){return node.sib_group_id})
+      .entries(node_list).reduce(function(sibling_points,sib_group){
+        sibling_points_x = x(sib_group.values[0].level-0.5);
+        sibling_points_y = d3.mean(sib_group.values,function(n){return n.y});
+        sibling_points[sib_group.key] = [sibling_points_x,sibling_points_y];
+        return sibling_points;
+      });
+    var links = node_list.reduce(function(links,node){
+      for (var i = node.children.length-1; i > -1 ; i--) {
+        var child = node.children[i];
+        if (child.type == "link-intermediate"){
+          node.children.splice(i,1);
+          var curr = child;
+          var last = child;
+          var prepath = [[node.x,node.y]];
+          while (curr.type == "link-intermediate"){
+            prepath.push([curr.x,curr.y]);
+            last = curr;
+            curr = curr.children[0];
+          }
+          last.children.forEach(function(end_child){
+            var path = prepath.map(function(d){return d;});
+            path.push(sibling_points[end_child.sib_group_id]);
+            path.push([end_child.x,end_child.y]);
+            node.children.push(end_child);
+            end_child.parents.splice(end_child.parents.indexOf(last),1);
+            end_child.parents.push(node);
+            links.push({'type':'link','id':"LINK::"+node.id+"-->--"+end_child.id,'path':path});
+          });
         }
-        var m_x = (x(mating.values[0].level)+x(mating.values[0].level-1))/2;
-        var m_y = d3.mean(mating.values,function(child){return child.y});
-        var m_mother = mating.values[0].mother;
-        var m_father = mating.values[0].father;
-        return {
-          'x':m_x,
-          'y':m_y,
-          'children':mating.values,
-          'mother':m_mother,
-          'father':m_father,
-          'type':'mating',
-          'id':m_mother.id+","+m_father.id,
-          'level':mating.values[0].level,
-          'links':[]
+        else {
+          var path = [[node.x,node.y]];
+          path.push(sibling_points[child.sib_group_id])
+          path.push([child.x,child.y]);
+          links.push({'type':'link','id':"LINK::"+node.id+"-->--"+child.id,'path':path});
         }
-      }).filter(function(m){return m!=null});
-    
-    var links = matings.reduce(function(arr,mating){
-      arr.push({'source':mating.mother,'sink':mating,'type':'link','linktype':'mother','id':mating.mother.id+'->'+mating.id});
-      arr.push({'source':mating.father,'sink':mating,'type':'link','linktype':'father','id':mating.father.id+'->'+mating.id});
-      [].push.apply(arr,mating.children.map(function(child){
-        return {'source':mating,'sink':child,'type':'link','linktype':'child','id':mating.id+'->'+child.id}
-      }));
-      return arr;
+      }
+      return links;
     },[]);
-    links.forEach(function(link){
-      link.source.links.push(link);
-      link.sink.links.push(link);
-    })
-    links.sort(function(a,b){
-      var adist = Math.pow(a.source.x-a.sink.x,2)+Math.pow(a.source.y-a.sink.y,2);
-      var bdist = Math.pow(a.source.x-a.sink.x,2)+Math.pow(a.source.y-a.sink.y,2);
-      return d3.ascending(adist,bdist);
-    })
     
-    
-    return {'nodes':node_list,'matings':matings,'links':links,'x':xrange,'y':yrange}
+    return {'nodes':node_list, 'links':links, 'x':xrange,'y':yrange}
   }
   
   
@@ -425,7 +447,6 @@ function pedigreeTree(){
           'id':id(node_data), 
           'value':value(node_data), 
           'children':[], 
-          'links':[],
           '_node_data':node_data
         };
         return idmap[node_id];
@@ -433,7 +454,7 @@ function pedigreeTree(){
     wrapped_nodes.forEach(function(wrapped){
         var parent_ids = parents(wrapped._node_data).map(id);
         if (!parentsOrdered) parent_ids.sort();
-        wrapped.sib_group_id = parent_ids ? "NG::"+parent_ids.join("++M++") : "NG::_ROOT_";
+        wrapped.sib_group_id = parent_ids.length>0 ? "S::"+parent_ids.join("++M++") : "S::_ROOT_";
         wrapped.parents = parent_ids.map(function(p_id){return idmap[p_id];});
         wrapped.parents.forEach(function(parent){
           parent.children.push(wrapped);
@@ -449,15 +470,16 @@ function pedigreeTree(){
           return wrapped.children.length==0 && !excludeFromGrouping[wrapped.id];
         });
         if (groupable.length>=minGroupSize) {
-          grouped[sibling_group.key] = {
+          var group_id = "G::"+sibling_group.key;
+          grouped[group_id] = {
             'type':'node-group', 
-            'id':sibling_group.key, 
+            'id':group_id, 
+            'sib_group_id':sibling_group.key,
             'value':groupable, 
-            'children':[],
-            'links':[]
+            'children':[]
           };
-          grouped[sibling_group.key].parents = groupable[0].parents.map(function(p){
-            p.children.push(grouped[sibling_group.key]);
+          grouped[group_id].parents = groupable[0].parents.map(function(p){
+            p.children.push(grouped[group_id]);
             return p;
           })
           sibling_group.values.forEach(function(wrapped){
@@ -538,45 +560,33 @@ function pedigreeTree(){
       levels.forEach(function(level){
         Array.prototype.push.apply(old_order, level);
         level.forEach(function(node,i){
-          var child_count = node.children.length;
-          if (child_count>0){
-            var new_sort_val = node.sort_val;
-            var is_intergenerational = false;
-            for (var j = 0; j < node.children.length; j++) {
-              if (node.children[j].level>node.level+1){
-                is_intergenerational = true;
-              }
-              new_sort_val+=node.children[j].sort_val;
-            }
-            if (new_sort_val!=0){
-              new_sort_val = new_sort_val/(child_count+1);
-            }
-            if (is_intergenerational){
-              node.sort_val = Math.round(new_sort_val);
-            }
-            else {
-              node.sort_val = new_sort_val;
-            }
+          var new_sort_val = node.sort_val;
+          for (var j = 0; j < node.children.length; j++) {
+            new_sort_val+=node.children[j].sort_val;
           }
-        });
-        level.sort(function(a,b){
-          return d3.ascending(a.sort_val,b.sort_val);
+          for (var j = 0; j < node.parents.length; j++) {
+            new_sort_val+=node.parents[j].sort_val;
+          }
+          if (new_sort_val!=0){
+            new_sort_val = new_sort_val/(node.children.length+node.parents.length+1);
+          }
+          node.sort_val = new_sort_val;
         });
       });
       levels.forEach(function(level){
-        level.forEach(function(node,i){
-            if(node.parents){
-              var psv = d3.mean(node.parents,function(p){return p.sort_val});
-              node.sort_val = nsv/3 + 2*psv/3;
-            }
-        });
+        // level.forEach(function(node,i){
+        //     if(node.parents.length>0){
+        //       var psv = d3.mean(node.parents,function(p){return p.sort_val});
+        //       node.sort_val = node.sort_val/3 + 2*psv/3;
+        //     }
+        // });
         level.sort(function(a,b){
           return d3.ascending(a.sort_val,b.sort_val);
         });
         Array.prototype.push.apply(final_order, level);
       });
       history.push(array_eq(old_order,final_order)?"O":"X");
-      if (history.length>1 && history.slice(history.length-3).join("")=="OOO"){
+      if (history.length>1 && history.slice(history.length-8).join("")=="OOOOOOOO"){
         break;
       }
     }
