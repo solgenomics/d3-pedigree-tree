@@ -86,7 +86,7 @@ function pedigreeTree(){
         var start_pos = [d.x,d.y];
         return 'translate(' + start_pos[0] + ',' + start_pos[1] + ')';
       });
-    newNodes.append('text').attr("x",10).text(function(d){return d.id});
+    // newNodes.append('text').attr("x",10).text(function(d){return d.id});
     newNodes.append('circle')
       .attr('r',6)
       .attr('fill',function(d){
@@ -170,18 +170,25 @@ function pedigreeTree(){
       .attr('fill','none')
       .attr('stroke-width',2)
       .attr("shape-rendering","geometricPrecision")
-      .attr('stroke','red')
+      .attr('stroke',function(d){
+        if (d.type=="parent->"){
+          return "red";
+        }
+        return "green";
+      })
       .attr('d',function(d){
         return d3.line()(d.path);
       });
     var allLinks = newLinks.merge(links);
     // //set up link generators (to prevent overlap) and line generators.
-    // var inner_link = inner_link_layer(5,0.25,0.75);
     // var outer_link = outer_link_layer(10,layout.y[0]-10,layout.y[1]+10,inner_link);
-    // var stepline = d3.line().curve(d3.curveStep);
-    // var basisline = d3.line().curve(d3.curveBasis);
+    var stepline = d3.line().curve(d3.curveStep);
+    var basisline = d3.line().curve(d3.curveBasis);
     allLinks.transition(trans).attr("opacity",1).select('path').attr('d',function(d){
-      return d3.line()(d.path);
+      if (d.type=="parent->"){
+        return basisline(d.path);
+      }
+      return stepline(d.path);
     });
     
     //   function(d){
@@ -211,21 +218,11 @@ function pedigreeTree(){
     //   }
     // });
     //add expansion behaviour to groups.
-    allNodes.filter(function(d){return d.hasOwnProperty('group')})
+    allNodes.filter(function(d){return d.type=="node-group"})
       .style("cursor", "pointer")
       .on("click",function(d){
-        pdgtree.excludeFromGrouping(d.group.slice(0,groupExpand));
+        pdgtree.excludeFromGrouping(d.value.slice(0,groupExpand));
         var draw_out = pdgtree(selector,true,zoom);
-        if(zoomEnabled){
-          var mating_link = d.links.filter(function(l){
-              return l.linktype=="child"
-            })[0];
-          var o_mating = mating_link.source;
-          var n_mating = draw_out.tree.matings.filter(function(m){return m.id==o_mating.id})[0];
-          main_selected.select(".zoom-controller")
-            .transition(draw_out.trans)
-            .call(zoom.translateBy,o_mating.x-n_mating.x, o_mating.y-n_mating.y);
-        }
       });
     
     var draw_out = {'tree':layout,'trans':trans}
@@ -378,38 +375,65 @@ function pedigreeTree(){
         sibling_points[sib_group.key] = [sibling_points_x,sibling_points_y];
         return sibling_points;
       });
-    var links = node_list.reduce(function(links,node){
+      
+    var inner_link = inner_link_layer(5,0.25,0.75);
+    var links = d3.values(node_list.reduce(function(links,node){
       for (var i = node.children.length-1; i > -1 ; i--) {
         var child = node.children[i];
         if (child.type == "link-intermediate"){
           node.children.splice(i,1);
           var curr = child;
-          var last = child;
-          var prepath = [[node.x,node.y]];
+          var last = node;
+          var prepath = [];
           while (curr.type == "link-intermediate"){
-            prepath.push([curr.x,curr.y]);
+            prepath = prepath.concat(
+              inner_link(
+                last.x,last.y,
+                x(curr.level-0.5),curr.y,
+                curr.level
+              )
+            );
             last = curr;
             curr = curr.children[0];
           }
           last.children.forEach(function(end_child){
-            var path = prepath.map(function(d){return d;});
-            path.push(sibling_points[end_child.sib_group_id]);
-            path.push([end_child.x,end_child.y]);
             node.children.push(end_child);
             end_child.parents.splice(end_child.parents.indexOf(last),1);
             end_child.parents.push(node);
-            links.push({'type':'link','id':"LINK::"+node.id+"-->--"+end_child.id,'path':path});
+            
+            var path = prepath.concat(
+              inner_link(
+                last.x,last.y,
+                sibling_points[end_child.sib_group_id][0],sibling_points[end_child.sib_group_id][1],
+                end_child.level
+              )
+            );
+            path.push(sibling_points[end_child.sib_group_id]);
+            parent_link_id = "LINK::"+node.id+"-->--"+end_child.sib_group_id;
+            if (!links[parent_link_id]){
+              console.log(path);
+              links[parent_link_id] = {'type':'parent->','id':parent_link_id,'path':path};
+            } 
+            child_link_id = "LINK::"+end_child.sib_group_id+"-->--"+end_child.id
+            links[child_link_id] = {'type':'->child','id':child_link_id,'path':[sibling_points[end_child.sib_group_id],[end_child.x,end_child.y]]};
           });
         }
         else {
-          var path = [[node.x,node.y]];
-          path.push(sibling_points[child.sib_group_id])
-          path.push([child.x,child.y]);
-          links.push({'type':'link','id':"LINK::"+node.id+"-->--"+child.id,'path':path});
+          parent_link_id = "LINK::"+node.id+"-->--"+child.sib_group_id;
+          if (!links[parent_link_id]){
+            var path = inner_link(
+              node.x,node.y,
+              sibling_points[child.sib_group_id][0],sibling_points[child.sib_group_id][1],
+              node.level+1
+            )
+            links[parent_link_id] = {'type':'parent->','id':parent_link_id,'path':path};
+          } 
+          child_link_id = "LINK::"+child.sib_group_id+"-->--"+child.id
+          links[child_link_id] = {'type':'->child','id':child_link_id,'path':[sibling_points[child.sib_group_id],[child.x,child.y]]};
         }
       }
       return links;
-    },[]);
+    },{}));
     
     return {'nodes':node_list, 'links':links, 'x':xrange,'y':yrange}
   }
@@ -560,7 +584,7 @@ function pedigreeTree(){
       levels.forEach(function(level){
         Array.prototype.push.apply(old_order, level);
         level.forEach(function(node,i){
-          var new_sort_val = node.sort_val;
+          var new_sort_val = 0;
           for (var j = 0; j < node.children.length; j++) {
             new_sort_val+=node.children[j].sort_val;
           }
@@ -574,42 +598,47 @@ function pedigreeTree(){
         });
       });
       levels.forEach(function(level){
-        // level.forEach(function(node,i){
-        //     if(node.parents.length>0){
-        //       var psv = d3.mean(node.parents,function(p){return p.sort_val});
-        //       node.sort_val = node.sort_val/3 + 2*psv/3;
-        //     }
-        // });
+        var sib_group_scores = d3.nest().key(function(node){return node.sib_group_id})
+          .entries(level).reduce(function(scores,group){
+            scores[group.key] = d3.mean(group.values,function(node){return node.sort_val});
+            return scores;
+          },{});
         level.sort(function(a,b){
-          return d3.ascending(a.sort_val,b.sort_val);
+          return array_sort(
+            [sib_group_scores[a.sib_group_id],a.type=="node-group"?1:0,a.sort_val],
+            [sib_group_scores[b.sib_group_id],b.type=="node-group"?1:0,b.sort_val]
+          );
+        });
+        level.forEach(function(node,i){
+          node.sort_val = i/level.length;
         });
         Array.prototype.push.apply(final_order, level);
       });
       history.push(array_eq(old_order,final_order)?"O":"X");
-      if (history.length>1 && history.slice(history.length-8).join("")=="OOOOOOOO"){
+      if (history.length>1 && history.slice(history.length-4).join("")=="OOOO"){
         break;
       }
     }
     console.log(history.join(""))
-    levels.forEach(function(level,i){
-      level.forEach(function(node,i){
-        var parentSortVal = 0;
-        var currentSortVal = node.sort_val;
-        if (node.parents){
-          parentSortVal = d3.mean(node.parents,function(p){return p.sort_val});
-        } else {
-          parentSortVal = currentSortVal;
-        }
-        node.sort_list = [
-          parentSortVal,
-          node.sib_group_id,
-          node.type=='node-group'?100000:currentSortVal //keeps node-groups as the last node in any sibling_group
-        ];
-      });
-      level.sort(function(a,b){
-        return array_sort(a.sort_list,b.sort_list);
-      });
-    });
+    // levels.forEach(function(level,i){
+    //   level.forEach(function(node,i){
+    //     var parentSortVal = 0;
+    //     var currentSortVal = node.sort_val;
+    //     if (node.parents){
+    //       parentSortVal = d3.mean(node.parents,function(p){return p.sort_val});
+    //     } else {
+    //       parentSortVal = currentSortVal;
+    //     }
+    //     node.sort_list = [
+    //       parentSortVal,
+    //       node.sib_group_id,
+    //       node.type=='node-group'?100000:currentSortVal //keeps node-groups as the last node in any sibling_group
+    //     ];
+    //   });
+    //   level.sort(function(a,b){
+    //     return array_sort(a.sort_list,b.sort_list);
+    //   });
+    // });
     return levels;
   }
   
