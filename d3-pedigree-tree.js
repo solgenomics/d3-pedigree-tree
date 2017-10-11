@@ -6,9 +6,10 @@ function pedigreeTree(){
       parentsOrdered = true,
       levelWidth = 10,
       nodePadding = 10,
+      linkPadding = 10,
       nodeWidth = 5,
       updateDuration = 0;
-      sort = 0,
+      sort = 1,
       groupChildless = false,
       minGroupSize = 2,
       groupExpand = 10,
@@ -183,10 +184,10 @@ function pedigreeTree(){
     // //set up link generators (to prevent overlap) and line generators.
     // var outer_link = outer_link_layer(10,layout.y[0]-10,layout.y[1]+10,inner_link);
     var stepline = d3.line().curve(d3.curveStep);
-    var basisline = d3.line().curve(d3.curveBasis);
+    var curveline = d3.line().curve(d3.curveBasis);
     allLinks.transition(trans).attr("opacity",1).select('path').attr('d',function(d){
       if (d.type=="parent->"){
-        return basisline(d.path);
+        return curveline(d.path);
       }
       return stepline(d.path);
     });
@@ -262,6 +263,10 @@ function pedigreeTree(){
   };
   pdgtree.nodePadding = function(val){
     nodePadding = val;
+    return pdgtree;
+  };
+  pdgtree.linkPadding = function(val){
+    linkPadding = val;
     return pdgtree;
   };
   pdgtree.nodeWidth = function(val){
@@ -345,7 +350,7 @@ function pedigreeTree(){
     }
     
     var levels = getLevels(node_list);
-    if (sort) sortTree(levels,sort);
+    sortTree(levels,sort);
     
     var xrange = [0,levelWidth*(levels.length-1)]
     var yrange = [0,nodePadding*(d3.max(levels,function(l){return l.length}))-1]
