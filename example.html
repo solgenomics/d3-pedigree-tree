@@ -12,10 +12,11 @@
     <script src="d3-pedigree-tree.js" charset="utf-8"></script>
     <script type="text/javascript">
       function main() {  
-        var nodes = generate_nodes(4,10,2,10);
+        var nodes = generate_nodes(30,30,2,10);
         var tree = pedigreeTree()
           .levelWidth(400)
           .nodePadding(40)
+          .linkPadding(20)
           .zoomable(true)
           .parents(function(d){
             return [d.mother,d.father].filter(Boolean);
@@ -23,11 +24,14 @@
           .groupChildless(true)
           .updateDuration(800)
           .hideOnHover(true)
-          .sort(1)
+          .sort(0)
           .data(nodes);
         tree.autofit(".canv-parent")(".canv");
-        setTimeout(function(){
-          tree.sort(100).autofit(".canv-parent")(".canv",true);
+        s = 0
+        var iv = setInterval(function(){
+          s+=10
+          tree.sort(s).autofit(".canv-parent")(".canv",true);
+          if (s>50) clearInterval(iv);
         },800);
       }
       function generate_nodes(num_init,num_breedings,min_children,max_children){

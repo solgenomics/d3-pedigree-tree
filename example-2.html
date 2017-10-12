@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>None</title>
+  </head>
+  <body>
+    <svg class="canv" width="1000" height="400" style="border:solid thin black;">
+      <g class="canv"></g>
+    </svg>
+    <script src="https://d3js.org/d3.v4.js" charset="utf-8"></script>
+    <script src="d3-pedigree-tree.js" charset="utf-8"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/2.4.3/seedrandom.min.js"></script>
+    <script type="text/javascript">
+      function main() {  
+        Math.seedrandom('adfvWEV');
+        var nodes = generate_nodes(4,50,2,5);
+        console.log(nodes);
+        var tree = pedigreeTree()
+          .levelWidth(600)
+          .nodePadding(40)
+          .linkPadding(10)
+          .zoomable(true)
+          .parents(function(d){
+            return [d.mother,d.father].filter(Boolean);
+          })
+          .groupChildless(false)
+          .updateDuration(800)
+          .hideOnHover(true)
+          .sort(0)
+          .data(nodes);
+          
+        drawTree(tree.treeLayout(),".canv");
+        var s = 1
+        var inter = setInterval(function(){
+          tree.sort(s++)
+          drawTree(tree.treeLayout(),".canv",d3.transition().duration(400).ease(d3.easeLinear));
+          if (s==20) clearInterval(inter);
+        },400);
+        d3.select("body").on("click",function(){clearInterval(inter)});
+        
+      }
+      
+      function drawTree(layout,svg_selector,trans){
+        
+        //set default change-transtion to no duration
+        trans = trans || d3.transition().duration(0);
+        
+        //make wrapper(pdg)
+        console.log(layout);
+        var canv = d3.select(svg_selector);
+        var canvw = canv.attr("width"), 
+            canvh = canv.attr("height");
+        var pdg = canv.select('.pedigreeTree');
+        if (pdg.empty()){
+          pdg = canv.append('g').classed('pedigreeTree',true);
+        }
+      
+        //make background
+        var bg = pdg.select('.pdg-bg');
+        if (bg.empty()){
+          bg = pdg.append('rect')
+            .classed('pdg-bg',true)
+            .attr('width',canvw)
+            .attr('height',canvh)
+            .attr('fill',"white")
+            .attr('stroke','none');
+        }
+        
+        
+        //make scaled content group
+        var padding = 50;
+        var scale = get_fit_scale(canvw,canvh,layout.x[1],layout.y[1],padding);
+        var offsetx = (canvw-layout.x[1]*scale)/2;
+        var offsety = (canvh-layout.y[1]*scale)/2;
+        var content = pdg.select('.pdg-content');
+        if (content.empty()){
+          content = pdg.append('g').classed('pdg-content',true)
+            .attr('transform','translate('+offsetx+','+offsety+') scale('+scale+')');
+        }
+        content.transition(trans)
+          .attr('transform','translate('+offsetx+','+offsety+') scale('+scale+')');
+        
+        //set up draw layers
+        var linkLayer = content.select('.link-layer');
+        if(linkLayer.empty()){
+            linkLayer = content.append('g').classed('link-layer',true);
+        }
+        var nodeLayer = content.select('.node-layer');
+        if(nodeLayer.empty()){
+            nodeLayer = content.append('g').classed('node-layer',true);
+        }
+        
+        //draw nodes
+        var nodes = nodeLayer.selectAll('.node')
+          .data(layout.nodes,function(d){return d.id;});
+        var newNodes = nodes.enter().append('g')
+          .classed('node',true)
+          .attr('transform',function(d){
+            return 'translate('+d.x+','+d.y+')'
+          });
+        newNodes.append('circle')
+          .attr('r',10)
+          .attr('fill',function(d){
+            return d.type=='node'?'black':'grey';
+          });
+        var allNodes = newNodes.merge(nodes);
+        allNodes.transition(trans).attr('transform',function(d){
+          return 'translate('+d.x+','+d.y+')'
+        })
+        var oldNodes = nodes.exit().remove();
+        
+        //link curve generators
+        var stepline = d3.line().curve(d3.curveStep);
+        var curveline = d3.line().curve(d3.curveBasis);
+        var build_curve = function(d){
+          if (d.type=="parent->mid") return curveline(d.path);
+          if (d.type=="mid->child") return stepline(d.path);
+        };
+        
+        //link colors
+        var link_color = function(d){
+          if (d.type=="mid->child") return 'green';
+          if (d.type=="parent->mid"){
+            //if its the first parent, red. Otherwise, blue.
+            return d.sinks[0].parents.indexOf(d.source) ? 'blue' : 'red';
+          }
+          return 'gray';
+        }
+        
+        //make links
+        var links = linkLayer.selectAll('.link')
+          .data(layout.links,function(d){return d.id;});
+        var newLinks = links.enter().append('g')
+          .classed('link',true);
+        newLinks.append('path')
+          .attr('d',build_curve)
+          .attr('fill','none')
+          .attr('stroke',link_color)
+          .attr('stroke-width','2');
+        var allLinks = newLinks.merge(links);
+        allLinks.transition(trans).select('path').attr('d',build_curve);
+        var oldNodes = links.exit().remove();
+      }
+      
+      
+      
+      
+      
+      function get_fit_scale(w1,h1,w2,h2,pad){
+        w1 -= pad*2;
+        h1 -= pad*2;  
+        if (w1/w2<h1/h2){
+          return w1/w2;
+        } else {
+          return h1/h2;
+        }
+      }
+      
+      
+      function generate_nodes(num_init,num_breedings,min_children,max_children){
+        var nodes = [];
+        var id = 0;
+        for (var i = 0; i < num_init; i++) {
+          nodes.push({'mother':null,'father':null,'children':[],'id':id++,'level':0});
+        }
+        for (var i = 0; i < num_breedings; i++) {
+          mother = nodes[Math.floor(Math.random()*nodes.length)];
+          father = mother;
+          while (father==mother || (father.level!==mother.level)){
+            father = nodes[Math.floor(Math.random()*nodes.length)];
+          }
+          if (Math.random()>0.5){
+            father = nodes[Math.floor(Math.random()*nodes.length)];
+            while (father==mother){
+              father = nodes[Math.floor(Math.random()*nodes.length)];
+            }
+          }
+          num_offspring = min_children+Math.floor(Math.random()*(max_children+1-min_children));
+          for (var j = 0; j < num_offspring; j++) {
+            new_child = {'mother':mother,'father':father,'children':[],'id':id++,'level':d3.max([mother.level,father.level])+1};
+            mother.children.push(new_child);
+            father.children.push(new_child);
+            nodes.push(new_child);
+          }
+        }
+        return nodes; 
+      }
+      main();
+    </script>
+  </body>
+</html>
