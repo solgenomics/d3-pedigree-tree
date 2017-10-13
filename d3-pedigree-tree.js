@@ -32,14 +32,21 @@ function pedigreeTree(){
     var intermediates = {};
     for (var n = node_list.length-1; n > -1; n--) {
       var node = node_list[n];
+      
       for (var i = node.children.length-1; i > -1; i--) {
         var child = node.children[i];
+        
+        // If the child is beyond the next level from the parent, insert link
+        // intermediates on each layer between them.
         if (node.level<child.level-1){
-          node.children.splice(i,1);
-          child.parents.splice(child.parents.indexOf(node),1);
+          node.children.splice(i,1); // break parent->child relationship
+          child.parents.splice(child.parents.indexOf(node),1); //break child->parent relationship
+          
+          //create and chain link intermediates
           var current = node;
           while (current.level<child.level-1){
             var next_level = current.level+1;
+            //we want to use the same link intermediates for siblings!
             var intermediate_id = "LI::"+next_level+"::"+node.id+"->"+child.sib_group_id;
             if (!intermediates[intermediate_id]){
               intermediates[intermediate_id] = {
@@ -88,8 +95,13 @@ function pedigreeTree(){
       });
     });
     
-    //remove intergenerational link intermediates and make link paths
-    node_list = [].concat.apply([], levels).filter(function(node){return node.type!="link-intermediate"});
+    //we dont want to return the temporary link-intermediates, so remove them
+    node_list = [].concat.apply([], levels)
+      .filter(function(node){
+        return node.type!="link-intermediate";
+      });
+    
+    //find position (average) for the sibling branchpoint
     var sibling_points = d3.nest()
       .key(function(node){return node.sib_group_id})
       .entries(node_list).reduce(function(sibling_points,sib_group){
@@ -98,7 +110,8 @@ function pedigreeTree(){
         sibling_points[sib_group.key] = [sibling_points_x,sibling_points_y];
         return sibling_points;
       });
-      
+    
+    //remove intergenerational link intermediates and make link paths
     var inner_link = _inner_link_layer(5,0.25,0.75);
     var links = d3.values(node_list.reduce(function(links,node){
       for (var i = node.children.length-1; i > -1 ; i--) {
@@ -126,21 +139,37 @@ function pedigreeTree(){
             
             var path = prepath.concat(
               inner_link(
-                last.x+nodeWidth,last.y,
-                sibling_points[end_child.sib_group_id][0],sibling_points[end_child.sib_group_id][1],
+                last.x+nodeWidth, last.y,
+                sibling_points[end_child.sib_group_id][0],
+                sibling_points[end_child.sib_group_id][1],
                 end_child.level
               )
             );
             path.push(sibling_points[end_child.sib_group_id]);
             parent_link_id = "LINK::"+node.id+"-->--"+end_child.sib_group_id;
             if (!links[parent_link_id]){
-              links[parent_link_id] = {'source':node,'sinks':[end_child],'type':'parent->mid','id':parent_link_id,'path':path};
+              links[parent_link_id] = {
+                'source':node,
+                'sinks':[end_child],
+                'type':'parent->mid',
+                'id':parent_link_id,
+                'path':path
+              };
             } else {
               links[parent_link_id].sinks.push(end_child);
             }
             child_link_id = "LINK::parents-->--"+end_child.id;
             if(!links[child_link_id]){
-              links[child_link_id] = {'sources':[node],'sink':end_child,'type':'mid->child','id':child_link_id,'path':[sibling_points[end_child.sib_group_id],[end_child.x,end_child.y]]};
+              links[child_link_id] = {
+                'sources':[node],
+                'sink':end_child,
+                'type':'mid->child',
+                'id':child_link_id,
+                'path':[
+                  sibling_points[end_child.sib_group_id],
+                  [end_child.x,end_child.y]
+                ]
+              };
             } else {
               links[child_link_id].sources.push(node);
             }
@@ -151,7 +180,8 @@ function pedigreeTree(){
           if (!links[parent_link_id]){
             var path = inner_link(
               node.x+nodeWidth,node.y,
-              sibling_points[child.sib_group_id][0],sibling_points[child.sib_group_id][1],
+              sibling_points[child.sib_group_id][0],
+              sibling_points[child.sib_group_id][1],
               node.level+1
             )
             links[parent_link_id] = {'source':node,'sinks':[child],'type':'parent->mid','id':parent_link_id,'path':path};
