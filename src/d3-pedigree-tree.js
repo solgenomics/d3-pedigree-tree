@@ -1,6 +1,5 @@
-function pedigreeTree(){
-  
-  
+export default pedigreeTree;
+function pedigreeTree() {
   var data = [],
       excludeFromGrouping = {},
       groupChildless = false,
@@ -105,8 +104,8 @@ function pedigreeTree(){
     var sibling_points = d3.nest()
       .key(function(node){return node.sib_group_id})
       .entries(node_list).reduce(function(sibling_points,sib_group){
-        sibling_points_x = x(sib_group.values[0].level-0.5)+(nodeWidth/2);
-        sibling_points_y = d3.mean(sib_group.values,function(n){return n.y});
+        var sibling_points_x = x(sib_group.values[0].level-0.5)+(nodeWidth/2);
+        var sibling_points_y = d3.mean(sib_group.values,function(n){return n.y});
         sibling_points[sib_group.key] = [sibling_points_x,sibling_points_y];
         return sibling_points;
       });
@@ -176,7 +175,7 @@ function pedigreeTree(){
           });
         }
         else {
-          parent_link_id = "LINK::"+node.id+"-->--"+child.sib_group_id;
+          var parent_link_id = "LINK::"+node.id+"-->--"+child.sib_group_id;
           if (!links[parent_link_id]){
             var path = inner_link(
               node.x+nodeWidth,node.y,
@@ -188,7 +187,7 @@ function pedigreeTree(){
           } else {
             links[parent_link_id].sinks.push(child);
           }
-          child_link_id = "LINK::parents-->--"+child.id
+          var child_link_id = "LINK::parents-->--"+child.id
           if (!links[child_link_id]){
             links[child_link_id] = {'sources':[node],'sink':child,'type':'mid->child','id':child_link_id,'path':[sibling_points[child.sib_group_id],[child.x,child.y]]};
           } else {
@@ -199,7 +198,7 @@ function pedigreeTree(){
       return links;
     },{}));
     
-    return {'nodes':node_list, 'links':links, 'x':xrange,'y':yrange, 'pdgtree':pdgtree}
+    return {'nodes':node_list, 'links':links, 'x':xrange,'y':yrange, 'pdgtree':pedigreeTree}
   }
   pdgtree.data = function(arr){
     data = arr;
@@ -338,7 +337,7 @@ function pedigreeTree(){
   
   function _sortTree(levels){
     //determine the max possible height
-    height  = d3.max(levels,function(level){
+    var height  = d3.max(levels,function(level){
       return (level.length+1)*nodePadding;
     });
     
@@ -410,7 +409,7 @@ function pedigreeTree(){
         //build segments by determining padding require between adjacent nodes
         var segments = [];
         for (var i = 0; i < level.length; i++) {
-          nextSeg = {
+          var nextSeg = {
             'lpad':padding(level[i-1],level[i]),
             'rpad':padding(level[i],level[i+1]),
             'ideal':level[i].sort_ypos
@@ -532,4 +531,4 @@ function pedigreeTree(){
   }
 
   return pdgtree;
-}
+};

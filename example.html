@@ -7,14 +7,14 @@
   <body>
     <svg class="canv" style="border:solid thin black;width:100%;height:97vh;"></svg>
     <script src="https://d3js.org/d3.v4.js" charset="utf-8"></script>
-    <script src="d3-pedigree-tree.js" charset="utf-8"></script>
+    <script src="build/d3-pedigree-tree.js" charset="utf-8"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/2.4.3/seedrandom.min.js"></script>
     <script type="text/javascript">
       function main() {  
         // Math.seedrandom('adfASASsaDvW');
         var nodes = generate_nodes(4,30,2,100);
         console.log(nodes);
-        var tree = pedigreeTree()
+        var tree = d3.pedigreeTree()
           .levelWidth(500)
           .nodePadding(60)
           .nodeWidth(150)
@@ -146,7 +146,7 @@
         allNodes.filter(function(d){return d.type=="node-group"})
           .style("cursor", "pointer")
           .on("click",function(d){
-            layout.self.excludeFromGrouping(d.value.slice(0,10));
+            layout.pdgtree.excludeFromGrouping(d.value.slice(0,10));
             drawTree(layout.pdgtree(),".canv",d3.transition().duration(700).ease(d3.easeLinear));
           })
           .select("circle")
