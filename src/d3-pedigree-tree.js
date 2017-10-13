@@ -1,5 +1,4 @@
-export default pedigreeTree;
-function pedigreeTree() {
+export default function() {
   var data = [],
       excludeFromGrouping = {},
       groupChildless = false,
@@ -198,7 +197,7 @@ function pedigreeTree() {
       return links;
     },{}));
     
-    return {'nodes':node_list, 'links':links, 'x':xrange,'y':yrange, 'pdgtree':pedigreeTree}
+    return {'nodes':node_list, 'links':links, 'x':xrange,'y':yrange, 'pdgtree':pdgtree}
   }
   pdgtree.data = function(arr){
     data = arr;
