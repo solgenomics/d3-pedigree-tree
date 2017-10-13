@@ -1,64 +1,38 @@
-# Drawing Pedigree Trees with D3
+# D3-Pedigree-Tree
 ![example #1](readme_assets/header_image.png)
 
-## Intro
-This is a JavaScript tool which uses [D3.js]() to draw and/or arrange biparental [DAG](https://en.wikipedia.org/wiki/Directed_acyclic_graph)s. Ultimately, the goal is to make it a D3 plugin. It was developed in order to ease the visualization of complicated pedigree trees. As such, parent/child relationships are considered to be either mother/child or father/child (one of each for any given child).
+D3-Pedigree-Tree is a [D3.js]() plugin which adds a layout for visualizing multi-parental trees ([DAG](https://en.wikipedia.org/wiki/Directed_acyclic_graph)s) as pedgiree trees with grouped siblings. It was developed in order to ease the visualization of complicated pedigree trees.
 
----
-[Skip to Documentation](#usage)
+### Sorting
 
----
+D3-Pedigree-Tree sorts pedigree trees (grouping by siblings). In order to do this, it uses an iterative (hill-climbing) algorithm which repositions node according to the average positions of their parents and children. Running the sort algorithm multiple times results in a tree which has shorter edges and fewer intersections than random placement. The following example shows 20 iterations of the algorithm (2.5 per second.)
 
-## Arranging the Tree
-
-In order to "untangle" the tree the following algorithm is used:
-1. Each node is assigned a level such that `level(node) = max(level(mother(node)), level(father(node))) + 1`
-    - "Root" nodes (those without parents) are assigned a level such that `level(node) = max(0, min(level(child) for child in children(node))-1)`
-
+![sorting gif](readme_assets/sort_gif.gif)
 
 ## Usage
 
 _pedigreeTree uses a closure for configuration._
 
-Create a pedigreeTree function:
+Create and configure a pedigreeTree (this is an example, see the [Configuration Reference](#configuration-reference) for more information):
 ```javascript
-let pdgtree = pedigreeTree();
-```
-Configure the function (this is an example, see the [Configuration Reference](#configuration-reference) for more information):
-```javascript
-pdgtree.levelWidth(400)
-    .nodePadding(40)
-    .zoomable(true)
-    .sort(100)
+
+var pdgtree = d3.pedigreeTree()
+    .sort(20)
+    .levelWidth(400)
+    .nodePadding(60)
+    .nodeWidth(150)
+    .linkPadding(25)
     .groupChildless(true)
-    .updateDuration(800)
-    .hideOnHover(true)
-    .mother(function(d){
-        return d.mom;
+    .parents(function(d){
+        return [d.mother,d.father];
     })
-    .father(function(d){
-        return d.dad;
-    })
-    .children(function(d){
-        return node_data.filter(function(c){
-            return (c.dad==d || c.mom==d);
-        })
-    })
-    .data(node_data);
+    .data(node_data)
+    .id(function(d){
+        return d.id;
+    });
 ```
-To just get the layout information:
-```javascript
-layout_data = pdgtree.treeLayout();
-```
-To draw the tree:
-```javascript
-svgSelector = '.tree-svg';
 
-layout_data = pdgtree(svgSelector);
-//OR
-d3.select(layout_data).call(pdgtree);
-
-```
+Then
 
 
 ### Configuration Reference
