@@ -2,7 +2,7 @@
 
 ![example #1](readme_assets/header_image.png)
 
-D3-Pedigree-Tree is a [D3.js]() plugin which adds a layout for visualizing multi-parental trees ([DAG](https://en.wikipedia.org/wiki/Directed_acyclic_graph)s) as pedgiree trees with grouped siblings. It was developed in order to ease the visualization of complicated pedigree trees.
+D3-Pedigree-Tree is a [D3.js]() plugin which adds a layout for visualizing multi-parental trees ([DAG](https://en.wikipedia.org/wiki/Directed_acyclic_graph)s) as pedigree trees with grouped siblings. It was developed in order to ease the visualization of complicated pedigree trees.
 
 #### Sorting
 
@@ -13,7 +13,7 @@ D3-Pedigree-Tree sorts pedigree trees (grouping by siblings). In order to do thi
 
 #### Transformations
 
-All layout information is returned with X/Y coordindates. As such, a verticaly-oriented pedigree tree can be created by simply flipping the X and Y coordinates. To ease more complicated transformations, the X-range and Y-range are returned in the resulting layout object.
+All layout information is returned with X/Y coordindates. As such, a vertically-oriented pedigree tree can be created by simply flipping the X and Y coordinates. To ease more complicated transformations, the X-range and Y-range are returned in the resulting layout object.
 
 ## Installing
 
@@ -40,7 +40,7 @@ Returns the resulting layout object according to the settings made for the data 
 /*** Linktypes ***/
 [
   {
-    'type':"parent->mid", // represents edges eminating from parents (red&blue in the example above.)
+    'type':"parent->mid", // represents edges emanating from parents (red&blue in the example above.)
     'source': {}, // reference to the parent node.
     'sinks': [{},...,{}], // references to children in the linked sibling group
     'id': 'LINK::*-->--*', // id for this link that can be used to maintain object constancy.
@@ -90,10 +90,10 @@ Sets the the ID accessor. The _function_ is passed a [data member](#data) and sh
 Sets the the parents accessor. The _function_ is passed a [data member](#data) and should return the [data member](#data) which represents the parents node (or `null` if parentless).
 
 <a href="#parents-ordered" name="parents-ordered">#</a> _pedigreeTree_.**parentsOrdered**(_boolean_)  
-Sets wether or not the order of the parents returned by the [_pedigreeTree_.**parents**()](#parents) accessor should be taken into account when creating sibling groups. For example, it should be set to true if the accessor always returns the list as `[mother,father]`.
+Sets whether or not the order of the parents returned by the [_pedigreeTree_.**parents**()](#parents) accessor should be taken into account when creating sibling groups. For example, it should be set to true if the accessor always returns the list as `[mother,father]`.
 
 <a href="#value" name="value">#</a> _pedigreeTree_.**value**(_function_)  
-Sets the the value accessor. The _function_ is passed a [data member](#data) and should return a value to be assigned as node.value. By deafult, the value is is [data member](#data) itself.
+Sets the the value accessor. The _function_ is passed a [data member](#data) and should return a value to be assigned as node.value. By default, the value is is [data member](#data) itself.
 
 <a href="#iterations" name="iterations">#</a> _pedigreeTree_.**iterations**(_value_)  
 Sets the maximum number of iterations of the sorting algorithm to perform. (See [Sorting](#sorting).)
@@ -103,7 +103,7 @@ Sets the horizontal distance (in points) between levels of nodes.
 <img src="readme_assets/level-width.png" height="200px">
 
 <a href="#node-padding" name="node-padding">#</a> _pedigreeTree_.**nodePadding**(_value_)  
-Sets the minimum verticle distance (in points) from a node to its neighbors.  
+Sets the minimum vertical distance (in points) from a node to its neighbors.  
 <img src="readme_assets/node-padding.png" height="200px">
 
 <a href="#node-width" name="node-width">#</a> _pedigreeTree_.**nodeWidth**(_value_)  
@@ -124,4 +124,4 @@ Sets the minimum number of siblings required in order for them to be collapsed i
 Given an array of node ids, sets the layout such that those nodes will never be included in a group. 
 
 <a href="#reset" name="reset">#</a> _pedigreeTree_.**resetGroups**()  
-Resets the layout such that all nodes may be grouped if conditions are met. (Undos [_pedigreeTree_.**excludeFromGrouping**()](#exclude))
+Resets the layout such that all nodes may be grouped if conditions are met. (Undoes [_pedigreeTree_.**excludeFromGrouping**()](#exclude))
