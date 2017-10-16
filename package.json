@@ -14,7 +14,7 @@
     "url": "https://github.com/solgenomics/d3-pedigree-tree.git"
   },
   "scripts": {
-    "pretest": "rm -rf build && mkdir build && rollup -g d3-scale:d3,d3-scale:d3,d3-collection:d3 -f umd -n d3 -o build/d3-pedigree-tree.js -- index.js",
+    "pretest": "rm -rf build && mkdir build && rollup -g d3-scale:d3,d3-array:d3,d3-collection:d3 -f umd -n d3 -o build/d3-pedigree-tree.js -- index.js",
     "test": "tape 'test/**/*-test.js'",
     "prepublish": "npm run test && uglifyjs build/d3-pedigree-tree.js -c -m -o build/d3-pedigree-tree.min.js",
     "postpublish": "zip -j build/d3-foo.zip -- README.md build/d3-pedigree-tree.js build/d3-pedigree-tree.min.js"
