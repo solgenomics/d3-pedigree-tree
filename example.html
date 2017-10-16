@@ -146,7 +146,7 @@
         allNodes.filter(function(d){return d.type=="node-group"})
           .style("cursor", "pointer")
           .on("click",function(d){
-            layout.pdgtree.excludeFromGrouping(d.value.slice(0,10));
+            layout.pdgtree.excludeFromGrouping(d.value.slice(0,10).map(function(d){return d.id;}));
             drawTree(layout.pdgtree(),".canv",d3.transition().duration(700).ease(d3.easeLinear));
           })
           .select("circle")

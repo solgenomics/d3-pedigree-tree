@@ -89,6 +89,7 @@ export default function() {
       var level_x = x(i);
       level.forEach(function(node,j){
         node.y = node.sort_ypos-yoffset;
+        delete node.sort_ypos;
         node.x = level_x;
       });
     });
@@ -203,8 +204,8 @@ export default function() {
     data = arr;
     return pdgtree;
   };
-  pdgtree.excludeFromGrouping = function(nodes){
-    nodes.forEach(function(node_data){excludeFromGrouping[id(node_data)] = true;});
+  pdgtree.excludeFromGrouping = function(ids){
+    ids.forEach(function(node_id){excludeFromGrouping[node_id] = true;});
     return pdgtree;
   };
   pdgtree.groupChildless = function(bool){
@@ -472,6 +473,7 @@ export default function() {
       });
     wrapped_nodes.forEach(function(wrapped){
         var parent_ids = parents(wrapped._node_data).map(id);
+        delete wrapped._node_data;
         if (!parentsOrdered) parent_ids.sort();
         wrapped.sib_group_id = parent_ids.length>0 ? "S::"+parent_ids.join("++M++") : "S::_ROOT_";
         wrapped.parents = parent_ids.map(function(p_id){return idmap[p_id];});
