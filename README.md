@@ -1,102 +1,127 @@
-# D3-Pedigree-Tree
+# d3-pedigree-tree
+
 ![example #1](readme_assets/header_image.png)
 
 D3-Pedigree-Tree is a [D3.js]() plugin which adds a layout for visualizing multi-parental trees ([DAG](https://en.wikipedia.org/wiki/Directed_acyclic_graph)s) as pedgiree trees with grouped siblings. It was developed in order to ease the visualization of complicated pedigree trees.
 
-### Sorting
+#### Sorting
 
 D3-Pedigree-Tree sorts pedigree trees (grouping by siblings). In order to do this, it uses an iterative (hill-climbing) algorithm which repositions node according to the average positions of their parents and children. Running the sort algorithm multiple times results in a tree which has shorter edges and fewer intersections than random placement. The following example shows 20 iterations of the algorithm (2.5 per second.)
 
 ![sorting gif](readme_assets/sort_gif.gif)
 
-## Usage
 
-_pedigreeTree uses a closure for configuration._
+#### Transformations
 
-Create and configure a pedigreeTree (this is an example, see the [Configuration Reference](#configuration-reference) for more information):
+All layout information is returned with X/Y coordindates. As such, a verticaly-oriented pedigree tree can be created by simply flipping the X and Y coordinates. To ease more complicated transformations, the X-range and Y-range are returned in the resulting layout object.
+
+## Installing
+
+If you use NPM, `npm install d3-pedigree-tree`. Otherwise, download the [latest release](https://github.com/d3/d3-pedigree-tree/releases/latest).
+
+## API Reference
+
+<a href="#pedigree-tree" name="pedigree-tree">#</a> d3.**pedigreeTree**()  
+Constructs a new pedigree-tree layout with the default settings.
+
+<a href="#pedigree-tree-instance" name="pedigree-tree-instance">#</a> _pedigreeTree_()   
+Returns the resulting layout object according to the settings made for the data provided. This information is formated as follows:  
+###### Layout format
 ```javascript
+/*** Main Object ***/
+{
+  'links':[link1,link2,...,link3], // list of all links in layout (see linktypes)
+  'nodes':[node1,node2,...,node3], // list of all nodes in layout (see nodetypes)
+  'x':[xMin,xMax], // minimum and maximum x coordinate in layout
+  'y':[yMin,yMax], // minimum and maximum y coordinate in layout
+  'pdgtree': function pdgtree(){} // reference to the function which created this object.
+}
 
-var pdgtree = d3.pedigreeTree()
-    .sort(20)
-    .levelWidth(400)
-    .nodePadding(60)
-    .nodeWidth(150)
-    .linkPadding(25)
-    .groupChildless(true)
-    .parents(function(d){
-        return [d.mother,d.father];
-    })
-    .data(node_data)
-    .id(function(d){
-        return d.id;
-    });
+/*** Linktypes ***/
+[
+  {
+    'type':"parent->mid", // represents edges eminating from parents (red&blue in the example above.)
+    'source': {}, // reference to the parent node.
+    'sinks': [{},...,{}], // references to children in the linked sibling group
+    'id': 'LINK::*-->--*', // id for this link that can be used to maintain object constancy.
+    'path': [[x,y],[x,y],[x,y]] // list of points in the link's generated path. (this can be passed to a d3.line() function)
+  },
+  {
+    'type':"mid->child", // represents edges ending in children (green in the example above.)
+    'sources': [{},...,{}], // references to the parent nodes for the sibling group.
+    'sink': {}, // reference to child linked.
+    'id': 'LINK::*-->--*',
+    'path': [[x,y],[x,y],[x,y]]
+  }
+]
+
+/*** Nodetypes ***/
+[
+  {
+    'type':'node', // object representing a normal node (black in the example above).
+    'parents':[{},...,{}], // list of parent nodes.
+    'children':[{},...,{}], // list of child nodes.
+    'id': "", // id for this link that can be used to maintain object constancy as defined by pedigreeTree.id()
+    'sib_group_id': "", // id shared by every child in a sibling group.
+    'value': {}, // value as defined by pedigreeTree.value()
+    'x': x, // x coordinate for this node
+    'y': y  // y coordinate for this node
+  },
+  {
+    'type':'nodeGroup', // object representing a grouped node (white in the example above).
+    'parents':[{},...,{}], // list of parent nodes.
+    'children':[], // always empty
+    'id': "", // id for this link that can be used to maintain object constancy.
+    'sib_group_id': "", // id shared by every child in a sibling group (and as such, every child in this grouped node).
+    'value': [{},...,{}], // list of references to the node which are contained in this nodeGroup.
+    'x': x, // x coordinate for this nodeGroup
+    'y': y  // y coordinate for this nodeGroup
+  }
+]
 ```
 
-Then
-
-
-### Configuration Reference
-#### Defining Nodes  
-_Options for input data & parsing._
-
-<a href="#data" name="data">#</a> pdgtree.**data**(_array_)  
+<a href="#data" name="data">#</a> _pedigreeTree_.**data**(_array_)  
 Sets an _array_ of objects (members) which will be used as the basis for constructing nodes. These will not be modified and will be accessible via node.value from the resulting node objects.
 
-<a href="#id" name="id">#</a> pdgtree.**id**(_function_)  
-Sets the the ID accessor. _function_ is passed a [data member](#data) and should return an ID string. IDs will be used to insure nodes maintain [object constancy](https://bost.ocks.org/mike/constancy/).
+<a href="#id" name="id">#</a> _pedigreeTree_.**id**(_function_)  
+Sets the the ID accessor. The _function_ is passed a [data member](#data) and should return an ID string. IDs will be used to insure nodes maintain [object constancy](https://bost.ocks.org/mike/constancy/). This function must always return the same ID if it is run multiple times on the same input.
 
-<a href="#mother" name="mother">#</a> pdgtree.**mother**(_function_)  
-Sets the the mother accessor. _function_ is passed a [data member](#data) and should return the [data member](#data) which represents the mother node (or `null` if parentless).
+<a href="#parents" name="parents">#</a> _pedigreeTree_.**parents**(_function_)  
+Sets the the parents accessor. The _function_ is passed a [data member](#data) and should return the [data member](#data) which represents the parents node (or `null` if parentless).
 
-<a href="#father" name="father">#</a> pdgtree.**father**(_function_)  
-Sets the father accessor similar to [pdgtree.**mother**](#mother).
+<a href="#parents-ordered" name="parents-ordered">#</a> _pedigreeTree_.**parentsOrdered**(_boolean_)  
+Sets wether or not the order of the parents returned by the [_pedigreeTree_.**parents**()](#parents) accessor should be taken into account when creating sibling groups. For example, it should be set to true if the accessor always returns the list as `[mother,father]`.
 
-<a href="#children" name="children">#</a> pdgtree.**children**(_function_)  
-Sets the child accessor. _function_ is passed a [data member](#data) and should return an array of all child [data members](#data). An empty array should be returned in the case of no children.
+<a href="#value" name="value">#</a> _pedigreeTree_.**value**(_function_)  
+Sets the the value accessor. The _function_ is passed a [data member](#data) and should return a value to be assigned as node.value. By deafult, the value is is [data member](#data) itself.
 
-<a href="#value" name="value">#</a> pdgtree.**value**(_function_)  
-Sets the the value accessor. _function_ is passed a [data member](#data) and should return a value to be given assigned as node.value. By deafult, the value is is [data member](#data) itself.
+<a href="#iterations" name="iterations">#</a> _pedigreeTree_.**iterations**(_value_)  
+Sets the maximum number of iterations of the sorting algorithm to perform. (See [Sorting](#sorting).)
 
-
-### Layout Options  
-_Options for generating the tree data._
-
-<a href="#sort" name="sort">#</a> pdgtree.**sort**(_value_)  
-Sets the maximum number of iterations of the sort algorithm to perform.  
-
-<a href="#level-width" name="level-width">#</a> pdgtree.**levelWidth**(_value_)  
+<a href="#level-width" name="level-width">#</a> _pedigreeTree_.**levelWidth**(_value_)  
 Sets the horizontal distance (in points) between levels of nodes.  
 <img src="readme_assets/level-width.png" height="200px">
 
-<a href="#node-padding" name="node-padding">#</a> pdgtree.**nodePadding**(_value_)  
-Sets the **minimum** verticle distance (in points) between nodes in a level.  
+<a href="#node-padding" name="node-padding">#</a> _pedigreeTree_.**nodePadding**(_value_)  
+Sets the minimum verticle distance (in points) from a node to its neighbors.  
 <img src="readme_assets/node-padding.png" height="200px">
 
-<a href="#group-childless" name="group-childless">#</a> pdgtree.**groupChildless**(_boolean_)  
-Toggle grouping for childless nodes. If enabled, siblings without children will be collapsed into groups. (In the drawn tree, these groups can be expanded by clicking them).
-
-<a href="#min-group-size" name="min-group-size">#</a> pdgtree.**minGroupSize**(_value_)  
-Sets the minimum number of siblings required in order for them to be collapsed into a group.
-
-
-### Draw Options
-_Options which effect how the tree is drawn & it's interactivity._  
-
-<a href="#node-width" name="node-width">#</a> pdgtree.**nodeWidth**(_value_)  
-Sets the horizontal distance (in points) nodes and the start of the outgoing edges. This allows for labels to be added to the nodes (by selecting them after drawing the tree) if desired.  
+<a href="#node-width" name="node-width">#</a> _pedigreeTree_.**nodeWidth**(_value_)  
+Sets the horizontal distance (in points) nodes and the start of the outgoing edges. This allows for labels to be added to the nodes.   
 <img src="readme_assets/node-width.png" height="200px">
 
-<a href="#group-expand" name="group-expand">#</a> pdgtree.**groupExpand**(_value_)  
-Sets the number of siblings which are expanded from a group on each click.
+<a href="#link-padding" name="link-padding">#</a> _pedigreeTree_.**linkPadding**(_value_)  
+Sets the minimum verticle distance (in points) from a link to its neighbors.  
+<img src="readme_assets/link-padding.png" height="200px">
 
-<a href="#update-duration" name="update-duration">#</a> pdgtree.**updateDuration**(_value_)  
-Sets the transition duration when a group is expanded.
+<a href="#group-childless" name="group-childless">#</a> _pedigreeTree_.**groupChildless**(_boolean_)  
+Toggle grouping for childless nodes. If enabled, siblings without children will be collapsed into special grouped nodes. (See [Layout Format](#layout-format).)
 
-<a href="#hide-on-hover" name="hide-on-hover">#</a> pdgtree.**hideOnHover**(_value_)  
-When enabled, all but immediate relatives will fade out when the user hovers over a node.
+<a href="#min-group-size" name="min-group-size">#</a> _pedigreeTree_.**minGroupSize**(_value_)  
+Sets the minimum number of siblings required in order for them to be collapsed into a group.  
 
-<a href="#autofit" name="autofit">#</a> pdgtree.**autofit**(_selector_)  
-If d3.select(_selector_) is not empty, the drawn tree will be automatically scaled to fit inside the selected SVG element.
+<a href="#exclude" name="exclude">#</a> _pedigreeTree_.**excludeFromGrouping**(_array_)  
+Given an array of node ids, sets the layout such that those nodes will never be included in a group. 
 
-<a href="#zoomable" name="zoomable">#</a> pdgtree.**zoomable**(_value_)  
-When enabled, enables drag and zoome on the drawn tree.
+<a href="#reset" name="reset">#</a> _pedigreeTree_.**resetGroups**()  
+Resets the layout such that all nodes may be grouped if conditions are met. (Undos [_pedigreeTree_.**excludeFromGrouping**()](#exclude))
