@@ -1,3 +1,7 @@
+import {scaleLinear} from "d3-scale";
+import {nest,values} from "d3-collection";
+import {mean,min,max} from "d3-array";
+
 export default function() {
   var data = [],
       excludeFromGrouping = {},
@@ -70,7 +74,7 @@ export default function() {
     _sortTree(levels);
     
     var xrange = [0,levelWidth*(levels.length-1)+(nodeWidth)]
-    var x = d3.scaleLinear()
+    var x = scaleLinear()
       .domain([0,levels.length-1+nodeWidth/levelWidth])
       .range(xrange);
       
@@ -101,18 +105,18 @@ export default function() {
       });
     
     //find position (average) for the sibling branchpoint
-    var sibling_points = d3.nest()
+    var sibling_points = nest()
       .key(function(node){return node.sib_group_id})
       .entries(node_list).reduce(function(sibling_points,sib_group){
         var sibling_points_x = x(sib_group.values[0].level-0.5)+(nodeWidth/2);
-        var sibling_points_y = d3.mean(sib_group.values,function(n){return n.y});
+        var sibling_points_y = mean(sib_group.values,function(n){return n.y});
         sibling_points[sib_group.key] = [sibling_points_x,sibling_points_y];
         return sibling_points;
       });
     
     //remove intergenerational link intermediates and make link paths
     var inner_link = _inner_link_layer(5,0.25,0.75);
-    var links = d3.values(node_list.reduce(function(links,node){
+    var links = values(node_list.reduce(function(links,node){
       for (var i = node.children.length-1; i > -1 ; i--) {
         var child = node.children[i];
         if (child.type == "link-intermediate"){
@@ -311,7 +315,7 @@ export default function() {
     nodes.filter(function(node){
       return node.parents.length==0;
     }).forEach(function(node){
-      node.level = d3.min(node.children,function(child){
+      node.level = min(node.children,function(child){
         return child.level-1;
       });
     });
@@ -337,7 +341,7 @@ export default function() {
   
   function _sortTree(levels){
     //determine the max possible height
-    var height  = d3.max(levels,function(level){
+    var height  = max(levels,function(level){
       return (level.length+1)*nodePadding;
     });
     
@@ -380,9 +384,9 @@ export default function() {
         // sorting them first by average sortval of the sib group
         // then sorting grouped nodes to the bottom
         // then sorting by their individual scores.
-        var sib_group_scores = d3.nest().key(function(node){return node.sib_group_id})
+        var sib_group_scores = nest().key(function(node){return node.sib_group_id})
           .entries(level).reduce(function(scores,group){
-            scores[group.key] = d3.mean(group.values,function(node){return node.sort_ypos});
+            scores[group.key] = mean(group.values,function(node){return node.sort_ypos});
             return scores;
           },{});
         level.sort(function(a,b){
@@ -425,9 +429,9 @@ export default function() {
           var partial = segments.slice(i);
           var push_ideal = partial[0].ideal-partial[0].pos;
           if (push_ideal < 0) continue;
-          var push_average = d3.mean(partial,function(seg){return seg.ideal-seg.pos});
+          var push_average = mean(partial,function(seg){return seg.ideal-seg.pos});
           if (push_average>0){
-            var push = d3.min([push_ideal,push_average]);
+            var push = min([push_ideal,push_average]);
             partial.forEach(function(seg){
               seg.pos+=push;
             });
@@ -439,9 +443,9 @@ export default function() {
           var partial = rev.slice(i);
           var push_ideal = partial[0].ideal-partial[0].pos;
           if (push_ideal > 0) continue;
-          var push_average = d3.mean(partial,function(seg){return seg.ideal-seg.pos});
+          var push_average = mean(partial,function(seg){return seg.ideal-seg.pos});
           if (push_average < 0){
-            var push = d3.max([push_ideal,push_average]);
+            var push = max([push_ideal,push_average]);
             partial.forEach(function(seg){
               seg.pos+=push;
             });
@@ -482,7 +486,7 @@ export default function() {
         });
       });
     if (groupChildless){
-      var sibling_groups = d3.nest().key(function(wrapped){
+      var sibling_groups = nest().key(function(wrapped){
           return wrapped.sib_group_id;
         })
         .entries(wrapped_nodes);
@@ -516,7 +520,7 @@ export default function() {
         }
         return grouped;
       },{});
-      var grouped_nodes = d3.values(grouped);
+      var grouped_nodes = values(grouped);
       grouped_nodes.forEach(function(wrapped){
         if (wrapped.type=='node') {
           wrapped.children = wrapped.children.filter(function(c){
