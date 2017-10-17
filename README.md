@@ -17,7 +17,7 @@ All layout information is returned with X/Y coordindates. As such, a vertically-
 
 ## Installing
 
-If you use NPM, `npm install d3-pedigree-tree`. Otherwise, download the [latest release](https://github.com/d3/d3-pedigree-tree/releases/latest).
+If you use NPM, `npm install @solgenomics/d3-pedigree-tree`. Otherwise, download the [latest release](https://github.com/d3/d3-pedigree-tree/releases/latest).
 
 ## API Reference
 
