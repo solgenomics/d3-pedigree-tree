@@ -1,6 +1,6 @@
 {
   "name": "@solgenomics/d3-pedigree-tree",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "D3 layout for pedigree trees",
   "keywords": [
     "d3",
