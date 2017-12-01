@@ -1,6 +1,6 @@
 import {scaleLinear} from "d3-scale";
 import {nest,values} from "d3-collection";
-import {mean,min,max} from "d3-array";
+import {mean,min,max,ascending} from "d3-array";
 
 export default function() {
   var data = [],
@@ -11,6 +11,7 @@ export default function() {
       },
       iterations = 1,
       levelWidth = 100,
+      levelMidpoint = 50,
       linkPadding = 10,
       minGroupSize = 3,
       nodePadding = 10, 
@@ -21,11 +22,13 @@ export default function() {
       parentsOrdered = true,
       value = function(d){
         return d;
-      };
+      },
+      vertical = false;
   
   
   function pdgtree(){
     //create working nodes from input data (we dont want to modify the input) 
+    
     var node_list = _wrap_nodes(data);
     node_list.forEach(function(d){_setNodeLevels(d);});
     _setBestRootNodeLevels(node_list);
@@ -87,7 +90,9 @@ export default function() {
       });
     });
     var yoffset = yrange[0];
-    yrange = [yrange[0]-yoffset,[yrange[1]-yoffset]];
+    yrange = [yrange[0]-yoffset,yrange[1]-yoffset];
+    if (yrange[0]==Number.POSITIVE_INFINITY || isNaN(yrange[0])) yrange[0]=-nodePadding;
+    if (yrange[1]==Number.NEGATIVE_INFINITY || isNaN(yrange[0])) yrange[1]= nodePadding;
     
     levels.forEach(function(level,i){
       var level_x = x(i);
@@ -108,11 +113,11 @@ export default function() {
     var sibling_points = nest()
       .key(function(node){return node.sib_group_id})
       .entries(node_list).reduce(function(sibling_points,sib_group){
-        var sibling_points_x = x(sib_group.values[0].level-0.5)+(nodeWidth/2);
+        var sibling_points_x = x(sib_group.values[0].level-(levelMidpoint/levelWidth))+(nodeWidth/2);
         var sibling_points_y = mean(sib_group.values,function(n){return n.y});
         sibling_points[sib_group.key] = [sibling_points_x,sibling_points_y];
         return sibling_points;
-      });
+      },{});
     
     //remove intergenerational link intermediates and make link paths
     var inner_link = _inner_link_layer(5,0.25,0.75);
@@ -148,7 +153,7 @@ export default function() {
                 end_child.level
               )
             );
-            path.push(sibling_points[end_child.sib_group_id]);
+            path.push(sibling_points[end_child.sib_group_id].slice());
             parent_link_id = "LINK::"+node.id+"-->--"+end_child.sib_group_id;
             if (!links[parent_link_id]){
               links[parent_link_id] = {
@@ -169,7 +174,7 @@ export default function() {
                 'type':'mid->child',
                 'id':child_link_id,
                 'path':[
-                  sibling_points[end_child.sib_group_id],
+                  sibling_points[end_child.sib_group_id].slice(),
                   [end_child.x,end_child.y]
                 ]
               };
@@ -193,7 +198,7 @@ export default function() {
           }
           var child_link_id = "LINK::parents-->--"+child.id
           if (!links[child_link_id]){
-            links[child_link_id] = {'sources':[node],'sink':child,'type':'mid->child','id':child_link_id,'path':[sibling_points[child.sib_group_id],[child.x,child.y]]};
+            links[child_link_id] = {'sources':[node],'sink':child,'type':'mid->child','id':child_link_id,'path':[sibling_points[child.sib_group_id].slice(),[child.x,child.y]]};
           } else {
             links[child_link_id].sources.push(node);
           }
@@ -201,9 +206,37 @@ export default function() {
       }
       return links;
     },{}));
-    
+
+    if(vertical){
+      var tmp = xrange;
+      xrange = yrange;
+      yrange = tmp;
+      links.forEach(function(link){
+        link.path.forEach(function(ppoint){
+          var tmp = ppoint[0];
+          ppoint[0] = ppoint[1];
+          ppoint[1] = tmp;
+        });
+      });
+      node_list.forEach(function(node){
+        var tmp = node.x;
+        node.x = node.y;
+        node.y = tmp;
+      })
+    }
+      
     return {'nodes':node_list, 'links':links, 'x':xrange,'y':yrange, 'pdgtree':pdgtree}
   }
+  pdgtree.add = function(arr){
+    var added = {};
+    data.forEach(function(d){
+      added[id(d)] = true;
+    });
+    [].push.apply(data, arr.filter(function(d){
+      return !added[id(d)];
+    }));
+    return pdgtree;
+  };
   pdgtree.data = function(arr){
     data = arr;
     return pdgtree;
@@ -226,6 +259,10 @@ export default function() {
   };
   pdgtree.levelWidth = function(val){
     levelWidth = val;
+    return pdgtree;
+  };
+  pdgtree.levelMidpoint = function(val){
+    levelMidpoint = val;
     return pdgtree;
   };
   pdgtree.linkPadding = function(val){
@@ -260,6 +297,10 @@ export default function() {
     value = func;
     return pdgtree;
   };
+  pdgtree.vertical = function(bool){
+    vertical = bool;
+    return pdgtree;
+  };
   
   
   function _array_sort(a,b){
@@ -273,7 +314,7 @@ export default function() {
     if (i==min_length){
       return diff_len?(longer==a?1:-1):0;
     }
-    return a[i]-b[i];
+    return ascending(a[i],b[i]);
   }
   
   
@@ -290,16 +331,19 @@ export default function() {
   function _inner_link_layer(linewidth,source_ratio,sink_ratio){
     var counts = {};
     return function(x1,y1,x2,y2,sink_level){
-      if(!counts.hasOwnProperty(""+sink_level)){
-        counts[sink_level] = 0;
-      } else {
-        counts[sink_level]+=1;
-      }
+      // if(!counts.hasOwnProperty(""+sink_level)){
+      //   counts[sink_level] = 0;
+      // } else {
+      //   counts[sink_level]+=1;
+      // }
+      //var offset_level = counts[sink_level];
+      var offset_level = Math.abs((y2-y1) / nodePadding);
+      console.log(offset_level);
       var start = x2-(x2-x1)*(1-sink_ratio);
       var end = x1+(x2-x1)*(source_ratio);
       var width = (end-start);
       var mid = width/2 + start;
-      var offset = (counts[sink_level]*linewidth*Math.pow(-1,counts[sink_level]%2));
+      var offset = (offset_level*linewidth);//*Math.pow(-1,offset_level%2));
       var pos = (offset%(width/2))+mid;
       return [
         [x1,y1],
@@ -313,11 +357,14 @@ export default function() {
   
   function _setBestRootNodeLevels(nodes){
     nodes.filter(function(node){
-      return node.parents.length==0;
+      return node.parents.filter(Boolean).length==0;
     }).forEach(function(node){
-      node.level = min(node.children,function(child){
-        return child.level-1;
-      });
+      if(node.children.length>0){
+        node.level = min(node.children,function(child){
+          return child.level-1;
+        });
+      }
+      console.log(node.level);
     });
   }
   
@@ -358,105 +405,107 @@ export default function() {
       if(iterations!=0){ 
         var sortlevel = function(level){
           level.forEach(function(node,i){
+            var node_parents = node.parents.filter(Boolean);
             // assign each node a sort value which is the average of 
             // all immediate relative's sort values from the last round
             var new_sort_ypos = 0;
             for (var j = 0; j < node.children.length; j++) {
               new_sort_ypos+=node.children[j].sort_ypos;
             }
-            for (var j = 0; j < node.parents.length; j++) {
-              new_sort_ypos+=node.parents[j].sort_ypos;
+            for (var j = 0; j < node_parents.length; j++) {
+              new_sort_ypos+=node_parents[j].sort_ypos;
             }
             if (new_sort_ypos!=0){
-              new_sort_ypos = new_sort_ypos/(node.children.length+node.parents.length);
+              new_sort_ypos = new_sort_ypos/(node.children.length+node_parents.length);
             }
             node.sort_ypos = new_sort_ypos;
           });
         };
         for (var m = levels.length-1; m > -1 ; m--) {
           sortlevel(levels[m])
+          var level = levels[m]
+          // sort the nodes in each level by grouping them into their sibling groups
+          // sorting them first by average sortval of the sib group
+          // then sorting grouped nodes to the bottom
+          // then sorting by their individual scores.
+          var sib_group_scores = nest().key(function(node){return node.sib_group_id})
+            .entries(level).reduce(function(scores,group){
+              scores[group.key] = mean(group.values,function(node){return node.sort_ypos});
+              return scores;
+            },{});
+          level.sort(function(a,b){
+            return _array_sort(
+              [sib_group_scores[a.sib_group_id],a.sib_group_id,a.type=="node-group"?1:0,a.sort_ypos,a.id],
+              [sib_group_scores[b.sib_group_id],b.sib_group_id,b.type=="node-group"?1:0,b.sort_ypos,b.id]
+            );
+          });
+          
+          //now determine the best arrangement side-toside in the level for the nodes
+          //based on wether each node is a link or not, determine padding and center for each node
+          var padding = function(anode,bnode){
+            if ((typeof anode == 'undefined') || (typeof bnode == 'undefined')){
+              return 0;
+            } else if (anode.type!=bnode.type){
+              return nodePadding/2.0;
+            } else if (anode.type=="link-intermediate") {
+              return linkPadding/2.0;
+            } else {
+              return nodePadding/2.0;
+            }
+          }
+          var total_pos = 0;
+          //build segments by determining padding require between adjacent nodes
+          var segments = [];
+          for (var i = 0; i < level.length; i++) {
+            var nextSeg = {
+              'lpad':padding(level[i-1],level[i]),
+              'rpad':padding(level[i],level[i+1]),
+              'ideal':level[i].sort_ypos
+            };
+            nextSeg.pos = total_pos+nextSeg.lpad;
+            total_pos = nextSeg.pos+nextSeg.rpad;
+            segments.push(nextSeg);
+          }
+          //two passes (leftwards and rightwards)
+          // push nodes *wards if doing so decreases avgerage distance
+          // to the ideal point (if there were no collisions) for each node
+          for (var i = 0; i < segments.length; i++) {
+            var partial = segments.slice(i);
+            var push_ideal = partial[0].ideal-partial[0].pos;
+            if (push_ideal < 0) continue;
+            var push_average = mean(partial,function(seg){return seg.ideal-seg.pos});
+            if (push_average>0){
+              var push = min([push_ideal,push_average]);
+              partial.forEach(function(seg){
+                seg.pos+=push;
+              });
+            }
+          }
+          for (var i = 0; i < segments.length; i++) {
+            var rev = segments.slice(0);
+            rev.reverse();
+            var partial = rev.slice(i);
+            var push_ideal = partial[0].ideal-partial[0].pos;
+            if (push_ideal > 0) continue;
+            var push_average = mean(partial,function(seg){return seg.ideal-seg.pos});
+            if (push_average < 0){
+              var push = max([push_ideal,push_average]);
+              partial.forEach(function(seg){
+                seg.pos+=push;
+              });
+            }
+          }
+          
+          //move nodes to position
+          level.forEach(function(node,i){
+            node.sort_ypos = segments[i].pos;
+          });
+        
         }
       }
       
       //group by sibling group and lay out the tree
-      levels.forEach(function(level){
-        // sort the nodes in each level by grouping them into their sibling groups
-        // sorting them first by average sortval of the sib group
-        // then sorting grouped nodes to the bottom
-        // then sorting by their individual scores.
-        var sib_group_scores = nest().key(function(node){return node.sib_group_id})
-          .entries(level).reduce(function(scores,group){
-            scores[group.key] = mean(group.values,function(node){return node.sort_ypos});
-            return scores;
-          },{});
-        level.sort(function(a,b){
-          return _array_sort(
-            [sib_group_scores[a.sib_group_id],a.type=="node-group"?1:0,a.sort_ypos,a.id],
-            [sib_group_scores[b.sib_group_id],b.type=="node-group"?1:0,b.sort_ypos,b.id]
-          );
-        });
-        
-        //now determine the best arrangement side-toside in the level for the nodes
-        //based on wether each node is a link or not, determine padding and center for each node
-        var padding = function(anode,bnode){
-          if ((typeof anode == 'undefined') || (typeof bnode == 'undefined')){
-            return 0;
-          } else if (anode.type!=bnode.type){
-            return nodePadding/2.0;
-          } else if (anode.type=="link-intermediate") {
-            return linkPadding/2.0;
-          } else {
-            return nodePadding/2.0;
-          }
-        }
-        var total_pos = 0;
-        //build segments by determining padding require between adjacent nodes
-        var segments = [];
-        for (var i = 0; i < level.length; i++) {
-          var nextSeg = {
-            'lpad':padding(level[i-1],level[i]),
-            'rpad':padding(level[i],level[i+1]),
-            'ideal':level[i].sort_ypos
-          };
-          nextSeg.pos = total_pos+nextSeg.lpad;
-          total_pos = nextSeg.pos+nextSeg.rpad;
-          segments.push(nextSeg);
-        }
-        //two passes (leftwards and rightwards)
-        // push nodes *wards if doing so decreases avgerage distance
-        // to the ideal point (if there were no collisions) for each node
-        for (var i = 0; i < segments.length; i++) {
-          var partial = segments.slice(i);
-          var push_ideal = partial[0].ideal-partial[0].pos;
-          if (push_ideal < 0) continue;
-          var push_average = mean(partial,function(seg){return seg.ideal-seg.pos});
-          if (push_average>0){
-            var push = min([push_ideal,push_average]);
-            partial.forEach(function(seg){
-              seg.pos+=push;
-            });
-          }
-        }
-        for (var i = 0; i < segments.length; i++) {
-          var rev = segments.slice(0);
-          rev.reverse();
-          var partial = rev.slice(i);
-          var push_ideal = partial[0].ideal-partial[0].pos;
-          if (push_ideal > 0) continue;
-          var push_average = mean(partial,function(seg){return seg.ideal-seg.pos});
-          if (push_average < 0){
-            var push = max([push_ideal,push_average]);
-            partial.forEach(function(seg){
-              seg.pos+=push;
-            });
-          }
-        }
-        
-        //move nodes to position
-        level.forEach(function(node,i){
-          node.sort_ypos = segments[i].pos;
-        });
-      });
+      levels.forEach(function(level){});
     }
     return levels;
   }
@@ -482,7 +531,9 @@ export default function() {
         wrapped.sib_group_id = parent_ids.length>0 ? "S::"+parent_ids.join("++M++") : "S::_ROOT_";
         wrapped.parents = parent_ids.map(function(p_id){return idmap[p_id];});
         wrapped.parents.forEach(function(parent){
-          parent.children.push(wrapped);
+          if (parent){
+            parent.children.push(wrapped);
+          }
         });
       });
     if (groupChildless){

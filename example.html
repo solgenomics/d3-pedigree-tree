@@ -12,7 +12,7 @@
     <script type="text/javascript">
       function main() {  
         // Math.seedrandom('adfASASsaDvW');
-        var nodes = generate_nodes(4,30,2,100);
+        var nodes = generate_nodes(30,30,2,100);
         console.log(nodes);
         var tree = d3.pedigreeTree()
           .levelWidth(500)
@@ -30,9 +30,9 @@
         var s = 0
         var inter = setInterval(function(){
           tree.iterations(s++)
-          drawTree(tree(),".canv",d3.transition().duration(400).ease(d3.easeLinear));
+          drawTree(tree(),".canv",d3.transition().duration(2000).ease(d3.easeLinear));
           if (s>20) clearInterval(inter);
-        },400);
+      },2000);
         d3.select("body").on("click",function(){clearInterval(inter)});
         
       }
@@ -138,11 +138,12 @@
         newNodes.append('text')
           .attr('x','14')
           .attr('y',5)
-          .text(function(d){return d.id});
+          .text(function(d){return d.raw_new_sort_ypos});
         var allNodes = newNodes.merge(nodes);
         allNodes.transition(trans).attr('transform',function(d){
           return 'translate('+d.x+','+d.y+')'
         })
+        allNodes.select('text').text(function(d){return d.raw_new_sort_ypos});
         allNodes.filter(function(d){return d.type=="node-group"})
           .style("cursor", "pointer")
           .on("click",function(d){
