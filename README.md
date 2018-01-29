@@ -2,7 +2,7 @@
 
 ![example #1](readme_assets/header_image.png)
 
-D3-Pedigree-Tree is a [D3.js]() plugin which adds a layout for visualizing multi-parental trees ([DAG](https://en.wikipedia.org/wiki/Directed_acyclic_graph)s) as pedigree trees with grouped siblings. It was developed in order to ease the visualization of complicated pedigree trees.
+D3-Pedigree-Tree is a [D3.js]() plugin which adds a layout for visualizing multi-parental trees ([DAG](https://en.wikipedia.org/wiki/Directed_acyclic_graph)s) as pedigree trees with grouped siblings. It was developed in order to ease the visualization of complicated pedigree trees. An example of its use is [solgenomics/BrAPI-Pedigree-Viewer](https://github.com/solgenomics/BrAPI-Pedigree-Viewer). 
 
 #### Sorting
 
