@@ -12,11 +12,11 @@
     <script type="text/javascript">
       function main() {  
         // Math.seedrandom('adfASASsaDvW');
-        var nodes = generate_nodes(30,30,2,100);
+        var nodes = generate_nodes(2,8,2,10,4,0.8);
         console.log(nodes);
         var tree = d3.pedigreeTree()
-          .levelWidth(500)
-          .nodePadding(60)
+          .levelWidth(1000)
+          .nodePadding(100)
           .nodeWidth(150)
           .linkPadding(25)
           .parents(function(d){
@@ -27,13 +27,23 @@
           .data(nodes);
           
         drawTree(tree(),".canv");
-        var s = 0
+        var s = 999
+        var end = false;
+        var ended = false;
         var inter = setInterval(function(){
-          tree.iterations(s++)
-          drawTree(tree(),".canv",d3.transition().duration(2000).ease(d3.easeLinear));
-          if (s>20) clearInterval(inter);
-      },2000);
-        d3.select("body").on("click",function(){clearInterval(inter)});
+          if (s<1000 && !(end&&ended)) drawTree(tree.iterations(s++)(),".canv",d3.transition().duration(400).ease(d3.easeLinear));
+          if(end) ended=true;
+        },500);
+        clicky = function(){
+          end = true;
+          ended = false;
+          d3.select("body").on("click",null).on("click",function(){
+            d3.select("body").on("click",clicky);
+            s = 0
+            end = false;
+          });
+        }
+        d3.select("body").on("click",clicky);
         
       }
       
@@ -208,35 +218,93 @@
         }
       }
       
-      
-      function generate_nodes(num_init,num_breedings,min_children,max_children){
+      function generate_nodes(num_init,num_breedings,min_children,max_children,num_levels,cross_gen_prob){
         var nodes = [];
+        var levels = [];
+        for (var i = 0; i < num_levels; i++) {
+          levels.push([]);
+        }
         var id = 0;
+        var p = cross_gen_prob;
         for (var i = 0; i < num_init; i++) {
-          nodes.push({'mother':null,'father':null,'children':[],'id':id++,'level':0});
+            var n = {'mother':null,'father':null,'children':[],'id':id++,'level':0};
+            nodes.push(n);
+            levels[0].push(n);
         }
         for (var i = 0; i < num_breedings; i++) {
-          mother = nodes[Math.floor(Math.random()*nodes.length)];
-          father = mother;
-          while (father==mother || (father.level!==mother.level)){
-            father = nodes[Math.floor(Math.random()*nodes.length)];
-          }
-          if (Math.random()>0.5){
-            father = nodes[Math.floor(Math.random()*nodes.length)];
-            while (father==mother){
-              father = nodes[Math.floor(Math.random()*nodes.length)];
-            }
-          }
-          num_offspring = min_children+Math.floor(Math.random()*(max_children+1-min_children));
+          var n_level = 1+Math.floor(Math.random()*(levels.length-1));
+          console.log("---\n",n_level)
+          var level_ids = levels.map(function(d,i){return i;}).filter(function(d){return d<n_level});
+          console.log(level_ids);
+          var p_level_probs = level_ids.map(function(j){
+            return j==0? 0 : 1 - Math.pow((1-p),j)*p
+          }).reverse();
+          console.log(p_level_probs);
+          var p1_toss = Math.random();
+          var p2_toss = Math.random();
+          console.log(p1_toss,p2_toss);
+          var p1_level = level_ids.filter(function(j){
+            return p_level_probs[j]<p1_toss
+          });
+          var p2_level = level_ids.filter(function(j){
+            return p_level_probs[j]<p2_toss
+          });
+          console.log(p1_level,p2_level);
+          p1_level = p1_level[0];
+          p2_level = p2_level[0];
+          console.log(p1_level, p2_level);
+          while (levels[p1_level].length<1) p1_level -=1;
+          while (levels[p2_level].length<1) p2_level -=1;
+          n_level = Math.max(p1_level,p2_level)+1;
+          var num_offspring = min_children+Math.floor(Math.random()*(max_children+1-min_children));
+          var mother = levels[p1_level][Math.floor(Math.random()*levels[p1_level].length)];
+          var father = levels[p2_level][Math.floor(Math.random()*levels[p2_level].length)];
           for (var j = 0; j < num_offspring; j++) {
-            new_child = {'mother':mother,'father':father,'children':[],'id':id++,'level':d3.max([mother.level,father.level])+1};
-            mother.children.push(new_child);
-            father.children.push(new_child);
-            nodes.push(new_child);
+            var n = {
+              'mother':mother,
+              'father':father,
+              'children':[],
+              'id':id++,
+              'level':n_level
+            };
+            mother.children.push(n);
+            father.children.push(n);
+            nodes.push(n);
+            levels[n_level].push(n);
           }
         }
         return nodes; 
       }
+      
+      
+      // function generate_nodes(num_init,num_breedings,min_children,max_children){
+      //   var nodes = [];
+      //   var id = 0;
+      //   for (var i = 0; i < num_init; i++) {
+      //     nodes.push({'mother':null,'father':null,'children':[],'id':id++,'level':0});
+      //   }
+      //   for (var i = 0; i < num_breedings; i++) {
+      //     mother = nodes[Math.floor(Math.random()*nodes.length)];
+      //     father = mother;
+      //     while (father==mother || (father.level!==mother.level)){
+      //       father = nodes[Math.floor(Math.random()*nodes.length)];
+      //     }
+      //     if (Math.random()>0.5){
+      //       father = nodes[Math.floor(Math.random()*nodes.length)];
+      //       while (father==mother){
+      //         father = nodes[Math.floor(Math.random()*nodes.length)];
+      //       }
+      //     }
+      //     num_offspring = min_children+Math.floor(Math.random()*(max_children+1-min_children));
+      //     for (var j = 0; j < num_offspring; j++) {
+      //       new_child = {'mother':mother,'father':father,'children':[],'id':id++,'level':d3.max([mother.level,father.level])+1};
+      //       mother.children.push(new_child);
+      //       father.children.push(new_child);
+      //       nodes.push(new_child);
+      //     }
+      //   }
+      //   return nodes; 
+      // }
       main();
     </script>
   </body>

@@ -414,7 +414,8 @@ export default function() {
               new_sort_ypos+=node_parents[j].sort_ypos;
             }
             if (new_sort_ypos!=0){
-              new_sort_ypos = new_sort_ypos/(node.children.length+node_parents.length);
+              var size = node.children.length+node_parents.length;
+              new_sort_ypos = new_sort_ypos/size;
             }
             node.sort_ypos = new_sort_ypos;
           });
